@@ -494,102 +494,113 @@ if(Check.QCs.with.plots){
 ##########################################
 source('f24_modified_1.0.r')
 
-data = as.matrix(aa[,c(1:16)])
-res = t(apply(data,1, f24_R2_alt2, t=c(0:15)*3))
-res[,4] = t(apply(2^data,1, f24_R2_alt2, t=c(0:15)*3))[,4]
+data = as.matrix(microsomal[,c(1:16)])
+
+period = 12
+res = t(apply(data,1, f24_R2_alt2, t=c(0:15)*3, period=period))
+res[,4] = t(apply(2^data,1, f24_R2_alt2, t=c(0:15)*3, period=period))[,4]
 qv = qvals(res[,6])
 res = cbind(res, qv)
-#colnames(res) = paste(colnames(res), '.WT', sep='')
-o = order(res[,6])
-res = res[o,]
-aa = aa[o,]
 
-aa = cbind(aa, res)
+colnames(res) = paste0(colnames(res), '.WT.12hRhythmicity')
 
+jj = match(c("nb.timepoints", "mean", "amp", "relamp", "phase", "pval", "qv"), colnames(microsomal))
+stats = microsomal[, jj]
+xx = microsomal[, -jj]
+colnames(stats) = paste0(colnames(stats), '.WT.24hRhythmicity')
 
-qq = c(0:100)/100
-nb.rhythmic = c()
-for(n in 1:length(qq))
-{
-  cutoff.qq = qq[n]
-  nb.rhythmic = c(nb.rhythmic,length(which(microsomal$qv<cutoff.qq)))
+mcm = data.frame(xx, stats, res, stringsAsFactors = FALSE)
+
+write.csv(mcm, file = paste0(tabDir, 'microsomalProt_processed.log2_localizationAnnot_rhythmicity.csv'), row.names = FALSE)
+saveRDS(mcm, file = paste0(RdataDir, 'microsomalProt_processed.log2_localizationAnnot_rhythmicity.rds'))
+
+Make.plots.for.rhythmicity = FALSE
+if(Make.plots.for.rhythmicity){
+  qq = c(0:100)/100
+  nb.rhythmic = c()
+  for(n in 1:length(qq))
+  {
+    cutoff.qq = qq[n]
+    nb.rhythmic = c(nb.rhythmic,length(which(microsomal$qv<cutoff.qq)))
+  }
+  
+  pdf('Plots/Nb_rhythmic_Proteins_FDR.pdf', width=2., height=2.)
+  par(cex = 0.7, las = 0, mgp = c(1.6,0.5,0), mar = c(3,3,2,0.8)+0.1, tcl = -0.3)
+  
+  plot(qq, nb.rhythmic+0.01, type='l', lty=1, lwd=1.2, main=NA, log='y',ylim=c(1,5000), xlab=NA, ylab=NA, col=c('black'), axes=FALSE)
+  #points(qq, nb.rhythmic.robles+0.01, type='l', lty=1, lwd=2, col='green')
+  abline(v=0.15,col='darkblue',lwd=1.5,lty=2)
+  abline(v=0.05,col='darkblue',lwd=1.5,lty=2)
+  abline(v=0.1,col='darkblue',lwd=1.5,lty=2)
+  axis(1,at=seq(0, 1.0, by=0.2),cex.axis =1.0)
+  axis(2, at= c(1, 5, 50, 500, 5000), las=1,cex.axis = 1.0)
+  box()
+  #abline(v=0.2,col='darkgreen',lwd=2,lty=2)
+  #abline(v=0.1,col='darkgreen',lwd=2,lty=2)
+  #legend('topright', legend = c('Mauvoisin','Robles'), lty=c(1,1), cex=0.7,col = c('blue', 'green'), border = NA, bty = 'n')
+  dev.off()
+  
+  source('/Users/jiwang/Proteomics_anaylysis/Nuclear_proteins/functions_nuclear.R')
+  
+  library(plotrix)
+  library("circular")
+  make_circ_coord = function(t,x,ttot=24)
+  {
+    dt=(t[2]-t[1])*.45
+    a=(rep(t,rep(4,length(t)))+rep(c(-dt,-dt,dt,dt),length(t)))*2*pi/ttot
+    h=rep(x,rep(4,length(x)))*rep(c(0,1,1,0),length(t))
+    list(angles=a,heights=h)
+  }
+  circular_phase24H_histogram = function(x,color_hist = rgb(0.6,0,0.2), cex.axis=0.5, cex.lab=0.5, lwd=0.5)
+  {
+    #color_DHS = rgb(0.6,0,0.2);x=phases;
+    par(lwd=lwd,cex.axis=cex.axis, cex.main=0.1,cex.lab=cex.lab)
+    #par(mfrow=c(1,1),mar=c(4.5,4.5,1,.5)+.1,las=1)
+    br=0:24
+    h=hist(x, br=br,plot=FALSE)
+    co=make_circ_coord(br[-1],h$counts)
+    radial.plot(co$heights,co$angles,br[-1]-br[2], clockwise=TRUE,start=pi/2, main=NA, rp.type='p', poly.col=color_hist)
+  }
+  
+  #### All detected rhythmic proteins
+  jj = which(microsomal$qv<0.15)
+  phases = as.numeric(microsomal$phase[jj])
+  amps = microsomal$amp[jj]
+  
+  pdf('Plots/Phase_distribution_all_rhythmic_detected.pdf', width=2.2, height=2.2)
+  par(cex = 0.7, las = 1, mgp = c(1.6,0.5,0), mar = c(3,3,2,0.8)+0.1, tcl = -0.3)
+  
+  #circular_phase24H_histogram(phases, col=rgb(0.6,0,0.2), cex.axis=0.7, cex.lab=0.01, lwd=0.5)
+  hist(phases, breaks=c(0:12)*2, col='gray')
+  
+  dev.off()
+  
+  pdf('Plots/Amplitudes_distribution_all_rhythmic_detected.pdf', width=2.2, height=2.2)
+  par(cex = 0.7, las = 1, mgp = c(1.6,0.5,0), mar = c(3,3,2,0.8)+0.1, tcl = -0.3)
+  breaks=c(0:10)/2;
+  h = hist(amps, breaks=breaks, plot=FALSE)
+  y = h$counts
+  y[which(y<=0)] = 0.5;
+  lwd = 1.2
+  plot(h$breaks, c(NA,y), type='S', ylim=c(1, max(y)), main=NA, xlab=NA, ylab=NA, axes=FALSE, log='y', lwd=lwd)
+  axis(1,at=seq(0, 5, by=1),cex.axis =1.0)
+  axis(2, at= c(1, 2, 5, 10, 20, 50, 100, 200), las=1,cex.axis = 1.0)
+  lines(h$breaks, c(h$counts,NA), type='s', lwd=lwd)
+  lines(h$breaks, c(NA,h$counts), type='h', lwd=lwd)
+  lines(h$breaks, c(h$counts,NA), type='h',lwd=lwd)
+  lines(h$breaks, rep(0,length(h$breaks)), type='S')
+  invisible(h)
+  
+  dev.off()
+  
+  #### Check phases and amplitudes
+  kk = which(microsomal$qv<0.15)
+  genes = microsomal$Gene.names[kk]
+  genes = unlist(strsplit(as.character(genes), ';'))
+  genes = genes[which(!is.na(genes)==TRUE)]
+  write.table(genes, file='Tables/rhythmic_microsomal_proteins_4functional_analysis.txt', sep='\t', quote=FALSE, col.names=FALSE, row.names=FALSE)
+  
 }
-
-pdf('Plots/Nb_rhythmic_Proteins_FDR.pdf', width=2., height=2.)
-par(cex = 0.7, las = 0, mgp = c(1.6,0.5,0), mar = c(3,3,2,0.8)+0.1, tcl = -0.3)
-
-plot(qq, nb.rhythmic+0.01, type='l', lty=1, lwd=1.2, main=NA, log='y',ylim=c(1,5000), xlab=NA, ylab=NA, col=c('black'), axes=FALSE)
-#points(qq, nb.rhythmic.robles+0.01, type='l', lty=1, lwd=2, col='green')
-abline(v=0.15,col='darkblue',lwd=1.5,lty=2)
-abline(v=0.05,col='darkblue',lwd=1.5,lty=2)
-abline(v=0.1,col='darkblue',lwd=1.5,lty=2)
-axis(1,at=seq(0, 1.0, by=0.2),cex.axis =1.0)
-axis(2, at= c(1, 5, 50, 500, 5000), las=1,cex.axis = 1.0)
-box()
-#abline(v=0.2,col='darkgreen',lwd=2,lty=2)
-#abline(v=0.1,col='darkgreen',lwd=2,lty=2)
-#legend('topright', legend = c('Mauvoisin','Robles'), lty=c(1,1), cex=0.7,col = c('blue', 'green'), border = NA, bty = 'n')
-dev.off()
-
-source('/Users/jiwang/Proteomics_anaylysis/Nuclear_proteins/functions_nuclear.R')
-
-library(plotrix)
-library("circular")
-make_circ_coord = function(t,x,ttot=24)
-{
-  dt=(t[2]-t[1])*.45
-  a=(rep(t,rep(4,length(t)))+rep(c(-dt,-dt,dt,dt),length(t)))*2*pi/ttot
-  h=rep(x,rep(4,length(x)))*rep(c(0,1,1,0),length(t))
-  list(angles=a,heights=h)
-}
-circular_phase24H_histogram = function(x,color_hist = rgb(0.6,0,0.2), cex.axis=0.5, cex.lab=0.5, lwd=0.5)
-{
-  #color_DHS = rgb(0.6,0,0.2);x=phases;
-  par(lwd=lwd,cex.axis=cex.axis, cex.main=0.1,cex.lab=cex.lab)
-  #par(mfrow=c(1,1),mar=c(4.5,4.5,1,.5)+.1,las=1)
-  br=0:24
-  h=hist(x, br=br,plot=FALSE)
-  co=make_circ_coord(br[-1],h$counts)
-  radial.plot(co$heights,co$angles,br[-1]-br[2], clockwise=TRUE,start=pi/2, main=NA, rp.type='p', poly.col=color_hist)
-}
-
-#### All detected rhythmic proteins
-jj = which(microsomal$qv<0.15)
-phases = as.numeric(microsomal$phase[jj])
-amps = microsomal$amp[jj]
-
-pdf('Plots/Phase_distribution_all_rhythmic_detected.pdf', width=2.2, height=2.2)
-par(cex = 0.7, las = 1, mgp = c(1.6,0.5,0), mar = c(3,3,2,0.8)+0.1, tcl = -0.3)
-
-#circular_phase24H_histogram(phases, col=rgb(0.6,0,0.2), cex.axis=0.7, cex.lab=0.01, lwd=0.5)
-hist(phases, breaks=c(0:12)*2, col='gray')
-
-dev.off()
-
-pdf('Plots/Amplitudes_distribution_all_rhythmic_detected.pdf', width=2.2, height=2.2)
-par(cex = 0.7, las = 1, mgp = c(1.6,0.5,0), mar = c(3,3,2,0.8)+0.1, tcl = -0.3)
-breaks=c(0:10)/2;
-h = hist(amps, breaks=breaks, plot=FALSE)
-y = h$counts
-y[which(y<=0)] = 0.5;
-lwd = 1.2
-plot(h$breaks, c(NA,y), type='S', ylim=c(1, max(y)), main=NA, xlab=NA, ylab=NA, axes=FALSE, log='y', lwd=lwd)
-axis(1,at=seq(0, 5, by=1),cex.axis =1.0)
-axis(2, at= c(1, 2, 5, 10, 20, 50, 100, 200), las=1,cex.axis = 1.0)
-lines(h$breaks, c(h$counts,NA), type='s', lwd=lwd)
-lines(h$breaks, c(NA,h$counts), type='h', lwd=lwd)
-lines(h$breaks, c(h$counts,NA), type='h',lwd=lwd)
-lines(h$breaks, rep(0,length(h$breaks)), type='S')
-invisible(h)
-
-dev.off()
-
-#### Check phases and amplitudes
-kk = which(microsomal$qv<0.15)
-genes = microsomal$Gene.names[kk]
-genes = unlist(strsplit(as.character(genes), ';'))
-genes = genes[which(!is.na(genes)==TRUE)]
-write.table(genes, file='Tables/rhythmic_microsomal_proteins_4functional_analysis.txt', sep='\t', quote=FALSE, col.names=FALSE, row.names=FALSE)
 
 
 ########################################################
