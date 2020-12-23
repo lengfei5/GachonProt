@@ -1,105 +1,146 @@
+##########################################################################
+##########################################################################
+# Project: Microsomal proteins 
+# Script purpose: analysis of microsomal proteins
+# Usage example: 
+# Author: Jingkui Wang (jingkui.wang@imp.ac.at)
+# Date of creation: Wed Dec 23 10:28:33 2020
+##########################################################################
+##########################################################################
+version.DATA = 'microsomalProt'
+version.analysis =  paste0(version.DATA, '_202012')
+dataDir = paste0("../data/")
+resDir = paste0('../results/', version.DATA)
+tabDir = paste0(resDir, "/tables/")
+RdataDir = paste0(resDir, "/Rdata/")
 
-require(preprocessCore)
+if(!dir.exists("results/")){dir.create("results/")}
+if(!dir.exists(resDir)){dir.create(resDir)}
+if(!dir.exists(RdataDir)){dir.create(RdataDir)}
+if(!dir.exists(tabDir)){dir.create(tabDir)}
 
-start.with.Raw.Data = FALSE
-if(start.with.Raw.Data)
-{
-  a = read.delim('/Users/jiwang/Proteomics_anaylysis/Microsomal_proteins/Raw_Data/microsomal_proteins_new/proteinGroups.txt', 
-                 header=TRUE, sep='\t',  na.strings = "Non Numérique")
-  b = read.delim('/Users/jiwang/Proteomics_anaylysis/Microsomal_proteins/Raw_Data/7199-7210_microsomal_mutants/proteinGroups.txt', header=TRUE, sep='\t', 
-                 na.strings = "Non Numérique")
-  #mm = match(b$Majority.protein.IDs, a$Majority.protein.IDs)
-  ii = grep('Ratio.H.L.normalized.ZT', colnames(a))
-  jj = grep('Ratio.H.L.normalized.', colnames(b))
-  aa = a[,ii]
-  aa = as.matrix(log2(aa));
-  aa = -aa
-  bb = b[,jj]
-  bb = -bb
-  bb = as.matrix(bb)
-  Data.control = FALSE
-  if(Data.control)
+########################################################
+########################################################
+# Section : raw data processing
+# 
+########################################################
+########################################################
+Process.rawData = FALSE
+if(Process.rawData){
+  start.with.Raw.Data = FALSE
+  if(start.with.Raw.Data)
   {
-    boxplot(aa, ylim=c(-1, 1));abline(h=0, lwd=2.0, col='red')
-    boxplot(bb, ylim=c(-10, 10));abline(h=0, lwd=2.0, col='red')
+    require(preprocessCore)
+    a = read.delim('/Users/jiwang/Proteomics_anaylysis/Microsomal_proteins/Raw_Data/microsomal_proteins_new/proteinGroups.txt', 
+                   header=TRUE, sep='\t',  na.strings = "Non Numérique")
+    b = read.delim('/Users/jiwang/Proteomics_anaylysis/Microsomal_proteins/Raw_Data/7199-7210_microsomal_mutants/proteinGroups.txt', header=TRUE, sep='\t', 
+                   na.strings = "Non Numérique")
+    #mm = match(b$Majority.protein.IDs, a$Majority.protein.IDs)
+    ii = grep('Ratio.H.L.normalized.ZT', colnames(a))
+    jj = grep('Ratio.H.L.normalized.', colnames(b))
+    aa = a[,ii]
+    aa = as.matrix(log2(aa));
+    aa = -aa
+    bb = b[,jj]
+    bb = -bb
+    bb = as.matrix(bb)
+    Data.control = FALSE
+    if(Data.control)
+    {
+      boxplot(aa, ylim=c(-1, 1));abline(h=0, lwd=2.0, col='red')
+      boxplot(bb, ylim=c(-10, 10));abline(h=0, lwd=2.0, col='red')
+      xx = read.table('/Users/jiwang/Proteomics_anaylysis/Microsomal_proteins/Raw_Data/microsomal_proteins_new/proteinGroups_nocontaminants_log2_alldata.txt', 
+                      header=TRUE, sep='\t',  na.strings = "NaN")
+      yy = read.table('/Users/jiwang/Proteomics_anaylysis/Microsomal_proteins/Raw_Data/7199-7210_microsomal_mutants/Microsomal_all_values.txt', 
+                      header=TRUE, sep='\t',  na.strings = "NaN")
+      
+      xx = as.matrix(xx[, c(1:16)]) 
+      boxplot(xx, ylim=c(-10, 10));abline(h=0, lwd=2.0, col='red')
+      
+      yy = as.matrix(yy[, c(1:12)])
+      boxplot(yy, ylim=c(-10, 10));abline(h=0, lwd=2.0, col='red')
+    }
+    
+    bb = bb[, c(9, 12, 10, 11, 5, 8, 6, 7, 1, 4, 2, 3)]
+    
+    bb = data.frame(b$Gene.names, bb, stringsAsFactors = FALSE)
+    colnames(bb) = c('Gene.names', 'ZT00.CryKO', 'ZT06.CryKO', 'ZT12.CryKO', 'ZT18.CryKO',
+                     'ZT00.BmalWT', 'ZT06.BmalWT', 'ZT12.BmalWT', 'ZT18.BmalWT', 
+                     'ZT00.BmalKO', 'ZT06.BmalKO', 'ZT12.BmalKO', 'ZT18.BmalKO')
+    
+    order = paste('ZT', seq(0, 46, by=3), sep='')
+    cname = colnames(aa)
+    cname = unlist(strsplit(as.character(cname), '[.]'))[(c(1:16)*6-1)]
+    mm = match(order, cname)
+    aa = aa[,mm]
+    colnames(aa) = c("ZT00.WT","ZT03.WT","ZT06.WT","ZT09.WT","ZT12.WT","ZT15.WT","ZT18.WT","ZT21.WT","ZT24.WT","ZT27.WT","ZT30.WT","ZT33.WT","ZT36.WT","ZT39.WT","ZT42.WT","ZT45.WT")
+    keep = c("Gene.names","Protein.IDs", "Majority.protein.IDs","Protein.names","Number.of.proteins", "Fasta.headers");
+    kk = match(keep, colnames(a))
+    aa = cbind(aa, a[,kk])
+  }else{
+    #### import processing tables (in log2)
     xx = read.table('/Users/jiwang/Proteomics_anaylysis/Microsomal_proteins/Raw_Data/microsomal_proteins_new/proteinGroups_nocontaminants_log2_alldata.txt', 
                     header=TRUE, sep='\t',  na.strings = "NaN")
-    yy = read.table('/Users/jiwang/Proteomics_anaylysis/Microsomal_proteins/Raw_Data/7199-7210_microsomal_mutants/Microsomal_all_values.txt', 
+    yy = read.table('/Users/jiwang/Proteomics_anaylysis/Microsomal_proteins/Raw_Data/7199-7210_microsomal_mutants/Microsomal_min_one_value.txt', 
                     header=TRUE, sep='\t',  na.strings = "NaN")
     
-    xx = as.matrix(xx[, c(1:16)]) 
-    boxplot(xx, ylim=c(-10, 10));abline(h=0, lwd=2.0, col='red')
+    xx = xx[, c(1:16, 27:30)]
+    yy = yy[, c(27, 9:12, 5:8, 1:4)]
     
-    yy = as.matrix(yy[, c(1:12)])
-    boxplot(yy, ylim=c(-10, 10));abline(h=0, lwd=2.0, col='red')
+    ### convert the H/L ratio into L/H ratio
+    xx = data.frame(-as.matrix(xx[, c(1:16)]), xx[, -c(1:16)], stringsAsFactors = FALSE)
+    yy = data.frame(yy[, 1], -as.matrix(yy[, c(2:13)]), stringsAsFactors = FALSE)
+    colnames(xx)[1:16]  = c("ZT00.WT","ZT03.WT","ZT06.WT","ZT09.WT","ZT12.WT","ZT15.WT","ZT18.WT","ZT21.WT",
+                            "ZT24.WT","ZT27.WT","ZT30.WT","ZT33.WT","ZT36.WT","ZT39.WT","ZT42.WT","ZT45.WT")
+    colnames(yy) = c('Gene.names', 'ZT00.CryKO', 'ZT06.CryKO', 'ZT12.CryKO', 'ZT18.CryKO',
+                     'ZT00.BmalWT', 'ZT06.BmalWT', 'ZT12.BmalWT', 'ZT18.BmalWT', 
+                     'ZT00.BmalKO', 'ZT06.BmalKO', 'ZT12.BmalKO', 'ZT18.BmalKO')
+    aa = xx;
+    bb = yy;
+    
   }
   
-  bb = bb[, c(9, 12, 10, 11, 5, 8, 6, 7, 1, 4, 2, 3)]
-  
-  bb = data.frame(b$Gene.names, bb, stringsAsFactors = FALSE)
-  colnames(bb) = c('Gene.names', 'ZT00.CryKO', 'ZT06.CryKO', 'ZT12.CryKO', 'ZT18.CryKO',
-                   'ZT00.BmalWT', 'ZT06.BmalWT', 'ZT12.BmalWT', 'ZT18.BmalWT', 
-                   'ZT00.BmalKO', 'ZT06.BmalKO', 'ZT12.BmalKO', 'ZT18.BmalKO')
-  
-  order = paste('ZT', seq(0, 46, by=3), sep='')
-  cname = colnames(aa)
-  cname = unlist(strsplit(as.character(cname), '[.]'))[(c(1:16)*6-1)]
-  mm = match(order, cname)
-  aa = aa[,mm]
-  colnames(aa) = c("ZT00.WT","ZT03.WT","ZT06.WT","ZT09.WT","ZT12.WT","ZT15.WT","ZT18.WT","ZT21.WT","ZT24.WT","ZT27.WT","ZT30.WT","ZT33.WT","ZT36.WT","ZT39.WT","ZT42.WT","ZT45.WT")
-  keep = c("Gene.names","Protein.IDs", "Majority.protein.IDs","Protein.names","Number.of.proteins", "Fasta.headers");
-  kk = match(keep, colnames(a))
-  aa = cbind(aa, a[,kk])
-}else{
-  #### import processing tables (in log2)
-  xx = read.table('/Users/jiwang/Proteomics_anaylysis/Microsomal_proteins/Raw_Data/microsomal_proteins_new/proteinGroups_nocontaminants_log2_alldata.txt', 
-                  header=TRUE, sep='\t',  na.strings = "NaN")
-  yy = read.table('/Users/jiwang/Proteomics_anaylysis/Microsomal_proteins/Raw_Data/7199-7210_microsomal_mutants/Microsomal_min_one_value.txt', 
-                  header=TRUE, sep='\t',  na.strings = "NaN")
-  
-  xx = xx[, c(1:16, 27:30)]
-  yy = yy[, c(27, 9:12, 5:8, 1:4)]
-  
-  ### convert the H/L ratio into L/H ratio
-  xx = data.frame(-as.matrix(xx[, c(1:16)]), xx[, -c(1:16)], stringsAsFactors = FALSE)
-  yy = data.frame(yy[, 1], -as.matrix(yy[, c(2:13)]), stringsAsFactors = FALSE)
-  colnames(xx)[1:16]  = c("ZT00.WT","ZT03.WT","ZT06.WT","ZT09.WT","ZT12.WT","ZT15.WT","ZT18.WT","ZT21.WT",
-                          "ZT24.WT","ZT27.WT","ZT30.WT","ZT33.WT","ZT36.WT","ZT39.WT","ZT42.WT","ZT45.WT")
-  colnames(yy) = c('Gene.names', 'ZT00.CryKO', 'ZT06.CryKO', 'ZT12.CryKO', 'ZT18.CryKO',
-                   'ZT00.BmalWT', 'ZT06.BmalWT', 'ZT12.BmalWT', 'ZT18.BmalWT', 
-                   'ZT00.BmalKO', 'ZT06.BmalKO', 'ZT12.BmalKO', 'ZT18.BmalKO')
-  aa = xx;
-  bb = yy;
-  
-}
-
-find.nb.timepoints = function(data)
-{
-  return(length(which(!is.na(data))));
-}
-keep = rep(NA, length=nrow(aa))
-for(n in 1:nrow(aa))
-{
-  if(aa$Gene.names[n]!='')
+  find.nb.timepoints = function(data)
   {
-    kk = which(as.character(bb[,1])==aa$Gene.names[n])
-    if(length(kk)==1) keep[n] = kk;
-    if(length(kk)>1)
-    {
-      nn = apply(as.matrix(bb[kk, -1]), 1, find.nb.timepoints)
-      kk = kk[which(nn==max(nn))]
-      kk = kk[1]
-      keep[n] = kk;
-    } 
+    return(length(which(!is.na(data))));
   }
+  keep = rep(NA, length=nrow(aa))
+  for(n in 1:nrow(aa))
+  {
+    if(aa$Gene.names[n]!='')
+    {
+      kk = which(as.character(bb[,1])==aa$Gene.names[n])
+      if(length(kk)==1) keep[n] = kk;
+      if(length(kk)>1)
+      {
+        nn = apply(as.matrix(bb[kk, -1]), 1, find.nb.timepoints)
+        kk = kk[which(nn==max(nn))]
+        kk = kk[1]
+        keep[n] = kk;
+      } 
+    }
+  }
+  
+  xx = data.frame(aa[, c(1:16)], bb[keep, -1], aa[, -c(1:16)], stringsAsFactors = FALSE)
+  #xx = xx[, -34]
+  
+  aa = xx;
+  
+  #write.table(aa,'Tables/Microsomal_proteins_WT_KO_All_L_H_ratio_log2.txt',sep='\t',quote=FALSE,col.names=TRUE, row.names = FALSE)
+  
 }
 
-xx = data.frame(aa[, c(1:16)], bb[keep, -1], aa[, -c(1:16)], stringsAsFactors = FALSE)
-#xx = xx[, -34]
 
-aa = xx;
-
-#write.table(aa,'Tables/Microsomal_proteins_WT_KO_All_L_H_ratio_log2.txt',sep='\t',quote=FALSE,col.names=TRUE, row.names = FALSE)
+########################################################
+########################################################
+# Section : rhythmicity test 
+# 
+########################################################
+########################################################
+#### Start Analysis of the processed table
+aa = read.table('Tables/Microsomal_Proteins_WT_KO_stat_All_L_H_ratio_log2.txt',sep='\t', header=TRUE)
+source('f24_modified_1.0.r')
+source('function_microsomal.R')
 
 ### Add statistics  
 #aa = read.table('Microsomal_Proteins_all.txt', sep='\t', header=TRUE)
@@ -133,12 +174,8 @@ colnames(res.ko) = c('prob.M1.CryKO', 'prob.M2.CryKO', 'prob.M3.CryKO', 'nb.CryK
 aa = cbind(aa, res.ko)
 #write.table(aa,'Tables/Microsomal_Proteins_WT_KO_stat_All_L_H_ratio_log2.txt',sep='\t',quote=FALSE, col.names=TRUE, row.names=FALSE)
 
-##########
-#### Start Analysis of the processed table
-##########
-aa = read.table('Tables/Microsomal_Proteins_WT_KO_stat_All_L_H_ratio_log2.txt',sep='\t', header=TRUE)
-source('f24_modified_1.0.r')
-source('function_microsomal.R')
+
+
 
 CIRC = c("Per1","Per2","Per3","Cry1","Cry2","Dbp","Tef","Hlf","Nr1d1","Nr1d2","Rora","Rorb","Rorc","Arntl","Bmal1","Clock","Npas2","Bhlhe40","Bhlhe41","Cirbp","Hamp","Hamp2","Nr4a2","Tfrc","Wee1", "Por")
 mm = match(CIRC, aa$Gene.names)
