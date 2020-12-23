@@ -14,7 +14,7 @@ resDir = paste0('../results/', version.DATA)
 tabDir = paste0(resDir, "/tables/")
 RdataDir = paste0(resDir, "/Rdata/")
 
-if(!dir.exists("results/")){dir.create("results/")}
+if(!dir.exists("../results/")){dir.create("../results/")}
 if(!dir.exists(resDir)){dir.create(resDir)}
 if(!dir.exists(RdataDir)){dir.create(RdataDir)}
 if(!dir.exists(tabDir)){dir.create(tabDir)}
@@ -133,7 +133,7 @@ if(Process.rawData){
 
 ########################################################
 ########################################################
-# Section : rhythmicity test 
+# Section : quick rhythmicity test 
 # 
 ########################################################
 ########################################################
@@ -175,15 +175,16 @@ aa = cbind(aa, res.ko)
 #write.table(aa,'Tables/Microsomal_Proteins_WT_KO_stat_All_L_H_ratio_log2.txt',sep='\t',quote=FALSE, col.names=TRUE, row.names=FALSE)
 
 
-
-
 CIRC = c("Per1","Per2","Per3","Cry1","Cry2","Dbp","Tef","Hlf","Nr1d1","Nr1d2","Rora","Rorb","Rorc","Arntl","Bmal1","Clock","Npas2","Bhlhe40","Bhlhe41","Cirbp","Hamp","Hamp2","Nr4a2","Tfrc","Wee1", "Por")
 mm = match(CIRC, aa$Gene.names)
 CIRC[which(!is.na(mm)==TRUE)]
 
-##########
-#### Add the subcellular localization for detected proteins
-##########
+########################################################
+########################################################
+# Section : Add the subcellular localization for detected proteins
+# 
+########################################################
+########################################################
 local.mouse = read.delim('uniprot-proteome_mouse_localization_GO_components.tab', sep='\t', header=TRUE)
 known = read.delim('/Users/jiwang/Proteomics_anaylysis/Nuclear_proteins/Annotations/Localization_COMPARTMENTS/mouse_compartment_knowledge_full.tsv',
                    sep='\t',header=FALSE)
@@ -431,62 +432,81 @@ for(n in 1:nrow(aa))
 
 dev.off()
 
-############################
-############################
-#######  General quality control of data
-############################
-############################
-microsomal = read.table('Tables/Microsomal_Proteins_L_H_ratio_log2__all_stat_localization_Uniprot_COMPARTMENTS.txt',sep='\t', header = TRUE)
-#xx = aa;
-#kk = which(xx$nb.timepoints.WT>=8 & xx$qv.WT<1)
+
+########################################################
+########################################################
+# Section : Quality control and further rhythmicity analysis
+# 
+# reanalysis were done after the location annotation
+########################################################
+########################################################
+microsomal = read.table(file = paste0(dataDir, 'microProt_L.H.ratio_log2_all_stat_localization.Uniprot.COMPARTMENTS.txt'),
+                        sep='\t', header = TRUE)
 data = as.matrix(microsomal[, c(1:28)])
-#rownames(data) = xx$Gene.names[kk]
 
-pdf.name = paste("Plots/Boxplots_all_samples_WT_KO.pdf", sep='')
-pdf(pdf.name, width=15, height=5)
-par(cex = 0.7, las = 1, mgp = c(1.6,0.5,0), mar = c(3,3,2,0.8)+0.1, tcl = -0.3)
-
-boxplot(data)
-
-dev.off()
-
-#pairs(data, na.action = stats::na.pass)
-
-pdf.name = paste("Plots/Correlation_replicates_WT_KO.pdf", sep='')
-pdf(pdf.name, width=8, height=6)
-par(cex = 0.7, las = 1, mgp = c(1.6,0.5,0), mar = c(3,3,2,0.8)+0.1, tcl = -0.3, pty='s')
-
-par(mfrow=c(3, 4))
-cex = 0.02;
-for(n in 1:8)
-{
-  #print(c((n-1)*3, (n+7)*3))
-  plot(data[, c(n, (n+8))], cex=cex, xlab=paste('ZT', (n-1)*3, '-Rep1', sep = ''),
-       ylab=paste('ZT', (n-1)*3,  '-Rep2', sep=''), xlim=c(-4, 4), ylim=c(-4, 4), main=NA);
-  jj = which(!is.na(data[,n]==TRUE & !is.na(data[, (n+8)])))
-  test = (cor.test(data[jj,n], data[jj, (n+8)], alternative='greater'))
+Check.QCs.with.plots = FALSE
+if(Check.QCs.with.plots){
+  pdf.name = paste0(resDir, "/Boxplots_all_samples_WT_KO.pdf")
+  pdf(pdf.name, width=15, height=10)
+  par(cex = 0.7, las = 1, mgp = c(1.6,0.5,0), mar = c(6,3,2,0.8)+0.1, tcl = -0.3)
   
-  text(-2, 3, paste('R = ', signif(cor(data[,n], data[, (n+8)], use="na.or.complete"), d=2), sep=''), col='red')
+  boxplot(data, las = 2)
   
-  abline(0, 1, lwd=1.5, col='red')
+  dev.off()
+  
+  #pairs(data, na.action = stats::na.pass)
+  
+  pdf.name = paste0(resDir, "/Correlation_replicates_WT_KO.pdf")
+  pdf(pdf.name, width=8, height=6)
+  par(cex = 0.7, las = 1, mgp = c(1.6,0.5,0), mar = c(3,3,2,0.8)+0.1, tcl = -0.3, pty='s')
+  
+  par(mfrow=c(3, 4))
+  cex = 0.02;
+  for(n in 1:8)
+  {
+    #print(c((n-1)*3, (n+7)*3))
+    plot(data[, c(n, (n+8))], cex=cex, xlab=paste('ZT', (n-1)*3, '-Rep1', sep = ''),
+         ylab=paste('ZT', (n-1)*3,  '-Rep2', sep=''), xlim=c(-4, 4), ylim=c(-4, 4), main=NA);
+    jj = which(!is.na(data[,n]==TRUE & !is.na(data[, (n+8)])))
+    test = (cor.test(data[jj,n], data[jj, (n+8)], alternative='greater'))
+    
+    text(-2, 3, paste('R = ', signif(cor(data[,n], data[, (n+8)], use="na.or.complete"), d=2), sep=''), col='red')
+    
+    abline(0, 1, lwd=1.5, col='red')
+  }
+  
+  for(n in 1:4)
+  {
+    plot(data[, c((n*2-1), (n+16))], cex=cex, xlab=paste('WT-ZT', (n-1)*6, '-Rep1', sep = ''),
+         ylab=paste('CryDKO-ZT', (n-1)*6, sep=''), xlim=c(-4, 4), ylim=c(-4, 4), main=NA);
+    #jj = which(!is.na(data[,n]==TRUE & !is.na(data[, (n+8)])))
+    #test = (cor.test(data[jj,n], data[jj, (n+16)], alternative='greater'))
+    text(-2, 3, paste('R = ', signif(cor(data[,(n*2-1)], data[, (n+16)], use="na.or.complete"), d=2), sep=''), col='red')
+    abline(0, 1, lwd=1.5, col='red')
+  }
+  #cd = cooks.distance(fit)
+  dev.off()
+  
 }
-for(n in 1:4)
-{
-  plot(data[, c((n*2-1), (n+16))], cex=cex, xlab=paste('WT-ZT', (n-1)*6, '-Rep1', sep = ''),
-       ylab=paste('CryDKO-ZT', (n-1)*6, sep=''), xlim=c(-4, 4), ylim=c(-4, 4), main=NA);
-  #jj = which(!is.na(data[,n]==TRUE & !is.na(data[, (n+8)])))
-  #test = (cor.test(data[jj,n], data[jj, (n+16)], alternative='greater'))
-  text(-2, 3, paste('R = ', signif(cor(data[,(n*2-1)], data[, (n+16)], use="na.or.complete"), d=2), sep=''), col='red')
-  abline(0, 1, lwd=1.5, col='red')
-}
-#cd = cooks.distance(fit)
-dev.off()
 
-############################
-############################
-#######  Rhythmicity analysis
-############################
-############################
+##########################################
+# Rhythmicity analysis
+##########################################
+source('f24_modified_1.0.r')
+
+data = as.matrix(aa[,c(1:16)])
+res = t(apply(data,1, f24_R2_alt2, t=c(0:15)*3))
+res[,4] = t(apply(2^data,1, f24_R2_alt2, t=c(0:15)*3))[,4]
+qv = qvals(res[,6])
+res = cbind(res, qv)
+#colnames(res) = paste(colnames(res), '.WT', sep='')
+o = order(res[,6])
+res = res[o,]
+aa = aa[o,]
+
+aa = cbind(aa, res)
+
+
 qq = c(0:100)/100
 nb.rhythmic = c()
 for(n in 1:length(qq))
@@ -571,9 +591,13 @@ genes = unlist(strsplit(as.character(genes), ';'))
 genes = genes[which(!is.na(genes)==TRUE)]
 write.table(genes, file='Tables/rhythmic_microsomal_proteins_4functional_analysis.txt', sep='\t', quote=FALSE, col.names=FALSE, row.names=FALSE)
 
-########
-##### Combine microsomal proteins with mRNA, total proteins, nuclear proteins.
-########
+
+########################################################
+########################################################
+# Section : Combine microsomal proteins with mRNA, total proteins, nuclear proteins.
+# 
+########################################################
+########################################################
 microsomal = read.table('Tables/Microsomal_Proteins_L_H_ratio_log2__all_stat_localization_Uniprot_COMPARTMENTS.txt',sep='\t', header = TRUE);
 
 microsomal.names = c()
@@ -724,7 +748,7 @@ length(which(microsomal.all$qv<0.15 & microsomal.all$qv.nuclear<=0.05))
 #### compare profiles of protein profiles in microsomal, total, nuclear and mRNA
 pdf('Plots/Microsomal_profiles_all_genes_centered_WT_KO_log2_with_localization_mRNA_total_nuclear.pdf',width=15,height=8)
 #for(n in 1:20)
-aa = microsomal.all;
+aa = microsomal.all
 for(n in 1:nrow(aa))
 {
   if(aa$nb.timepoints[n]>=8) ## select proteins with at least 8 time points
