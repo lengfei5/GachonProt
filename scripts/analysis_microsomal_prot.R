@@ -785,6 +785,7 @@ if(Analysis.protein.complexes)
   source('proteomics_functions.R')
   source('microsomal_functions.R')
   
+  # prepare the detected genes in microsomal
   microsomal = mcm
   microsomal$nb.timepoints = microsomal$nb.timepoints.WT.24hRhythmicity
   microsomal.names = c()
@@ -802,6 +803,9 @@ if(Analysis.protein.complexes)
   # prepare the CORUM protein complexes annotation
   # annot.corum = Processing.CORUM.all.Complexes.add.manually()
   
+  ##########################################
+  # check detected subunits for protein complexes
+  ##########################################
   Corum.table.generate = FALSE
   if(Corum.table.generate)
   {
@@ -812,7 +816,6 @@ if(Analysis.protein.complexes)
     colnames(annot.corum)[5] = 'subunits.UniProt.IDs'
     
     microsomal.names = data.frame(as.integer(microsomal.names[,1]), microsomal.names[, c(2,3)], stringsAsFactors = FALSE)
-    
     
     options(warn=1)
     detected = c()
@@ -861,26 +864,28 @@ if(Analysis.protein.complexes)
     
   }
   
-  #### Analysis rhythmicity and similarity of detected protein complexes
+  ##########################################
+  # test rhythmicity and similarity of detected protein complexes
+  ##########################################
+  load(file= paste0(RdataDir, 'Annotation_Corum_all_with_Manual_detected_microsomal.Rdata'))
+  source('f24_modified_1.0.r')
+  source('proteomics_functions.R')
+  
   SVD.Analysis.protein.complexes = FALSE
   if(SVD.Analysis.protein.complexes)
   {
-    load(file='Rdata/Annotation_Corum_all_with_Manual_detected_microsomal.Rdata')
-    source('/Users/jiwang/Proteomics_anaylysis/Nuclear_proteins/f24_modified_1.0.r')
-    #source('/Users/jiwang/Proteomics_anaylysis/Nuclear_proteins/functions_nuclear.R')
-    
     annot = annot.corum
     kk = which(annot$nb.subunits>0)
     annot = annot[kk,]
     
     kk = which(annot$nb.detected>1)
     annot = annot[kk,]
-    source('function_microsomal.R')
-    
-    pdfname = 'Plots/SVD_PC_plot_microsomal.pdf'
+        
+    pdfname = paste0(resDir, '/SVD_PC_plot_microsomal.pdf')
     res = matrix(NA, ncol=10, nrow=nrow(annot))
     #res = statistics.complexes.svd(annot[ii,], res[ii,], pdfname)
-    res = statistics.complexes.svd(annot, res, pdfname)
+    
+    res = statistics.complexes.svd(annot=annot, prot.data = microsomal, res = res, pdfname = pdfname, TEST = TRUE)
     
     res = data.frame(annot, res, stringsAsFactors=FALSE)
     
@@ -994,7 +999,3 @@ if(Analysis.protein.complexes)
   }
   
 }
-
-
-
-

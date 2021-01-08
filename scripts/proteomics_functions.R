@@ -713,8 +713,11 @@ Plots.complexes.subunits = function(annot, nn, pdfname)
       index = index[o1]
       genes = genes[o1]
       ylim = range(test, na.rm=TRUE)
-      plot(1,1,type = 'n', xlab = 'ZT[h]', ylab = 'standadized abundance', xlim = xlim, ylim = ylim,main=paste(annot[n,2],',\n', 'Coverage=', signif(as.numeric(annot$percent.detected[n]),d=2)*100, '%', 
-                                                                                                               ', pval.svd = ', signif(as.numeric(annot$pval.svd[n]), d=2), ', qv.rhythmic = ', signif(as.numeric(annot$qv.p1[n]), d=2), sep=''))
+      plot(1,1,type = 'n', xlab = 'ZT[h]', ylab = 'standadized abundance', xlim = xlim, ylim = ylim,
+           main=paste(annot[n,2],',\n', 'Coverage=', 
+                      signif(as.numeric(annot$percent.detected[n]),d=2)*100, '%', ', pval.svd = ', 
+                      signif(as.numeric(annot$pval.svd[n]), d=2), ', qv.rhythmic = ', 
+                      signif(as.numeric(annot$qv.p1[n]), d=2), sep=''))
       abline(h=0, col='gray',lwd=4.0)
       
       for(i in 1:nrow(test))
@@ -723,9 +726,12 @@ Plots.complexes.subunits = function(annot, nn, pdfname)
         text.col = 'black';
         
         type.plot='b';
-        points(c(0:15)*3, (test[i,]), type=type.plot, cex=2.0, lwd=2.0, col = rainbow[(i.rel-1)%%nrow(test)+1], lty = (i.rel-1)%/%nrow(test)+1)
+        points(c(0:15)*3, (test[i,]), type=type.plot, cex=2.0, lwd=2.0, 
+               col = rainbow[(i.rel-1)%%nrow(test)+1], lty = (i.rel-1)%/%nrow(test)+1)
         #points(c(0:15)*3, test[i,], type='l', cex=2.0, lwd=2.0, col = rainbow[(i.rel-1)%%nrow(test)+1], lty = 2)
-        legend(x = 0.75*xlim[2],y = ylim[2]*(1-i.rel*min(1.0/20,(1.0/nrow(test)))), legend = paste(genes[i],', pval= ', pvals[i], ', amp= ', amps[i],sep=''), text.col=text.col, col =  rainbow[(i.rel-1)%%nrow(test)+1], lty = (i.rel-1)%/%nrow(test)+1, bty = 'n' )
+        legend(x = 0.75*xlim[2],y = ylim[2]*(1-i.rel*min(1.0/20,(1.0/nrow(test)))), 
+               legend = paste(genes[i],', pval= ', pvals[i], ', amp= ', amps[i],sep=''),
+               text.col=text.col, col =  rainbow[(i.rel-1)%%nrow(test)+1], lty = (i.rel-1)%/%nrow(test)+1, bty = 'n' )
       }
     }
   }
@@ -735,7 +741,8 @@ Plots.complexes.subunits = function(annot, nn, pdfname)
 
 Plots.complexes.details = function(annot, nn, pdfname)
 {
-	#regulator.all = c('tfs.curated', 'cofactors', 'chromatin.remodellers',  'rna.processing.proteins','splicesome', 'kinases', 'phosphatases')
+	#regulator.all = c('tfs.curated', 'cofactors', 'chromatin.remodellers',  
+  #'rna.processing.proteins','splicesome', 'kinases', 'phosphatases')
 	#load(file='Rdata/Annotation_TFs_cofactors_chromatin_regulators_rna_processing_splicesome_kinases_phosphatases_used.Rdata')
 	#tfs = tfs.curated
 	#cofactors = unique(c(cofactors, chromatin.remodellers))
@@ -1108,21 +1115,20 @@ standadization.nona.impute = function(x)
 
 
 
-statistics.complexes.svd = function(annot, res, pdfname='myplots/SVD_PC_plot.pdf')
+statistics.complexes.svd = function(annot, prot.data, res, pdfname='SVD_PC_plot_example.pdf', cutoff.nb.timepoints = 8, 
+                                    TEST = FALSE)
 {	
 	pdfname = pdfname;
 	colnames(res) = c('nb.subunits.quantified', 'd.entropy', 'p1','p2', 'amp.p1', 'phase.p1','pval.p1', 'amp.p2', 'phase.p2','pval.p2')
 	## ii = grep('RNA polymerase II holoenzyme complex', annot[,2])[1];vect = annot[ii,]
-	##
-	#annot = annot[c(1:10), ]
-	#pdfname = pdfname;
-	#print(vect[2],'\n')
-	#cutoff.rhy = 0.01
-	#cutoff.sim = 0.80
-	cutoff.nb.timepoints = 8
+	
+	if(TEST){annot = annot[c(1:20), ]; }
+	
 	pdf(pdfname, width=14, height=12)
+	
 	for(n in 1:nrow(annot))
 	{
+    # n = 1
 		cat(n, '\n');
 		vect = annot[n,]
 		index = vect[which(names(vect)=='index.detected')];
