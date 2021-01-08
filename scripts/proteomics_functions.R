@@ -106,6 +106,114 @@ mean.correlation.subunits = function(index)
 	return(mean(correlation))
 }
 
+########################################################
+########################################################
+# Section : protein complex analysis
+# 
+########################################################
+########################################################
+
+##########################################
+# curate protein complex annotation
+##########################################
+Processing.CORUM.all.Complexes.add.manually = function()
+{
+  annotation = read.csv('Annotations/allComplexes_CORUM.csv', sep=';')
+  #ii = which(annotation$organism=='Mouse'|annotation$organism=='Human'|annotation$organism=='Rat')
+  annot =annotation[,c(1,2,3,4,5)]
+  
+  mapping = read.table('/Users/jiwang/Proteomics_anaylysis/Nuclear_proteins/Protein_Complexes/refGene2uniprotID.txt', header=FALSE, sep='\t')
+  uniprot = read.csv('/Users/jiwang/Proteomics_anaylysis/Nuclear_proteins/Uniprot_proteins_ID.csv',header=TRUE)
+  uniprot.mouse = read.delim('/Users/jiwang/Proteomics_anaylysis/Nuclear_proteins/Protein_Complexes/uniprot-taxonomy-mouse.tab', header=TRUE)
+  uniprot.human = read.delim('/Users/jiwang/Proteomics_anaylysis/Nuclear_proteins/Protein_Complexes/uniprot-taxonomy-human.tab', header=TRUE)
+  uniprot.rat = read.delim('/Users/jiwang/Proteomics_anaylysis/Nuclear_proteins/Protein_Complexes/uniprot-taxonomy-rat.tab', header=TRUE)
+  uniprot = rbind(uniprot.mouse, uniprot.human, uniprot.rat)
+  
+  annot.corum = annot;
+  
+  subunits = c() 
+  nb.subunits = c()
+  for(n in 1:nrow(annot.corum))
+  {
+    cat(n, '\n');
+    test = annot.corum[n,5]
+    test = gsub("[()]","",test) 
+    test = unlist(strsplit(as.character(test),","))
+    ii = match(test, uniprot[,1])
+    if(length(which(!is.na(ii)==TRUE))!=length(test)) print(n)
+    ii = ii[which(!is.na(ii)==TRUE)]
+    nb.subunits = c(nb.subunits, length(ii))
+    gene = c()
+    for(kk in ii) 
+    {
+      gg = sapply(unlist(strsplit(as.character(uniprot$Gene.names[kk]), ' ')), first.upper, USE.NAMES = FALSE);
+      mm = match(gg, microsomal.names[,3])
+      if(length(which(!is.na(mm)==TRUE))>0) gene = c(gene, gg[which(!is.na(mm)==TRUE)][1])
+      else gene = c(gene, gg[1])
+    }
+    subunits = c(subunits, paste(gene, sep='', collapse=','))
+  }
+  
+  annot.corum = data.frame(annot.corum, nb.subunits, subunits, stringsAsFactors = FALSE)
+  
+  #### Mannually Add complexes
+  ### Bmal1-Clock complex
+  pc.m = c('C1', 'Bmal1-Clock Heterodimer', rep(NA, 5), 'Arntl,Clock')
+  ### Per complex
+  pc.m = rbind(pc.m, c('C2', 'PER complex (main)', rep(NA, 5), 'Per1,Per2,Per3,Cry1,Cry2'))
+  pc.m = rbind(pc.m, c('C3', 'Bmal-Clock-Pers complex 1', rep(NA, 5), 'Arntl,Clock,Per1,Per2,Per3,Cry1,Cry2'))
+  pc.m = rbind(pc.m, c('C4', 'Clock-Bmal1 complex 1', rep(NA, 5), 'Clock,Arntl,Gnb2l1,Prkaca,Thrap3')) ## Robles et al. 2010 and Lande-Diner et al. 2013
+  pc.m = rbind(pc.m, c('C5', 'PER complex 1', rep(NA, 5), 'Per1,Per2,Per3,Cry1,Cry2,Nono,Wdr5')) ##Brown et al.2005
+  pc.m = rbind(pc.m, c('C6', 'PER complex 2', rep(NA, 5), 'Per1,Per2,Per3,Cry1,Cry2,Nono,Wdr5,Csnk1d,Csnk1e,Sfpq,Sin3a,Sin3b,Hdac1,Hdac2,Sap18,Sap30,Rbbp4,Rbbp7')) ##Duong et al. 2011
+  pc.m = rbind(pc.m, c('C7', 'PER complex 3', rep(NA, 5), 'Per1,Per2,Per3,Cry1,Cry2,Nono,Wdr5,Csnk1d,Csnk1e,Ddx5,Dhx9,Setx')) ## Padmanabhan et al. 2012
+  pc.m = rbind(pc.m, c('C8', 'PER complex 4', rep(NA, 5), 'Per1,Per2,Per3,Cry1,Cry2,Nono,Wdr5,Csnk1d,Csnk1e,Suv39h1,Suv39h2,Cbx3,Trim28')) ## Duong et al. 2014
+  
+  pc.m = rbind(pc.m, c('C20', 'Bmal1-Clock complex 2', rep(NA, 5), 'Arntl,Clock,Mta2,Chd4')) ## Kim et al. 2014
+  pc.m = rbind(pc.m, c('C21', 'PER complex 5', rep(NA, 5), 'Per1,Per2,Per3,Cry1,Cry2,Hdac1,Hdac2,Mbd2,Gatad2a,Rbbp4')) ## Kim et al. 2014
+  pc.m = rbind(pc.m, c('C22', 'PER complex 6', rep(NA, 5), 'Per1,Per2,Per3,Cry1,Cry2,Nono,Wdr5,Csnk1d,Csnk1e,Suv39h1,Suv39h2,Cbx3,Trim28')) ## Kim et al. 2014
+  
+  ### Polymerase complexes
+  pc.m = rbind(pc.m, c('C9', 'RNA Polymerase I complex (parts)', rep(NA, 5), 'Polr1a,Polr1b,Polr1c,Polr1d,Polr1e,Polr2e')) ## from Fred
+  pc.m = rbind(pc.m, c('C10', 'RNA Polymerase I complex (whole)', rep(NA, 5), 'Polr1a,Polr1b,Polr1c,Polr1d,Polr1e,Polr2e,Polr2f,Polr2h,Polr2l,Polr2k,Polr1e'))
+  pc.m = rbind(pc.m, c('C11', 'RNA Polymerase II complex (whole)', rep(NA, 5), 'Polr2a,Polr2b,Polr2c,Polr2j,Polr2l,Polr2e,Polr2f,Polr2h,Polr2l,Polr2k,Polr2d,Polr2g,Gtf2f1,Gtf2f2'))
+  pc.m = rbind(pc.m, c('C12', 'RNA Polymerase III complex (whole)', rep(NA, 5), 'Polr3a,Polr3b,Polr1c,Polr1d,Polr3d,Polr2e,Polr2f,Polr2h,Polr2l,Polr2k,Polr3h,Polr3k,Polr3c,Polr3f,Polr3g,Polr3l,Polr3e'))
+  
+  ### add methyltransferase complexes
+  pc.m = rbind(pc.m, c('C13', 'H3k4 methyltransferase complex (Set1a)', rep(NA, 5), 'Setd1a,Ash2l,Rbbp5,Wdr5,Dpy30,Cxxc1,Wdr82,Hcfc1,Hcfc2'))
+  pc.m = rbind(pc.m, c('C14', 'H3k4 methyltransferase complex (Set1b)', rep(NA, 5), 'Setd1b,Ash2l,Rbbp5,Wdr5,Dpy30,Cxxc1,Wdr82,Bod1,Bod1l,Hcfc1,Hcfc2'))
+  pc.m = rbind(pc.m, c('C15', 'H3k4 methyltransferase complex (Mll1)', rep(NA, 5), 'Mll1,Ash2l,Rbbp5,Wdr5,Dpy30,Hcfc1,Hcfc2,Men1'))
+  pc.m = rbind(pc.m, c('C16', 'H3k4 methyltransferase complex (Mll2)', rep(NA, 5), 'Mll2,Ash2l,Rbbp5,Wdr5,Dpy30,Hcfc1,Hcfc2,Men1,Psip1'))
+  pc.m = rbind(pc.m, c('C17', 'H3k4 methyltransferase complex (Mll3)', rep(NA, 5), 'Mll3,Ash2l,Rbbp5,Wdr5,Dpy30,Ncoa6,Kdm6a,Paxpip1,Pagr1'))
+  pc.m = rbind(pc.m, c('C18', 'H3k4 methyltransferase complex (Mll4)', rep(NA, 5), 'Mll4,Ash2l,Rbbp5,Wdr5,Dpy30,Ncoa6,Kdm6a,Paxpip1,Pagr1'))
+  pc.m = rbind(pc.m, c('C19', 'H3k4 methyltransferase complex (Mll5)', rep(NA, 5), 'Mll5,Hcfc1,Ogt,Stk38,Ppp1ca,Ppp1cb,Ppp1cc,Actb'))
+  
+  pc.m = rbind(pc.m, c('C23', 'HIRA histone chaperone complex', rep(NA, 5), 'Hira,Ubn1,Cabin1,Asf1a'))
+  pc.m = rbind(pc.m, c('C24', 'Rev-ErbA-alpha-Ncor1-Hdac3', rep(NA, 5), 'Nr1d1,Ncor1,Hdac3')) ## Yin and Lazar, 2005
+  
+  #pc.m = rbind(pc.m, c('C13', 'PER complex', rep(NA, 5), 'Per1,Per2,Per3,Cry1,Cry2,Nono,Wdr5,Csnk1d,Csnk1e,Sfpq'))
+  pc.m = pc.m[, c(1:6, 8)]
+  colnames = colnames(annot.corum)
+  colnames(pc.m) = colnames
+  pc.m = data.frame(pc.m, stringsAsFactors=FALSE)
+  
+  nb = c()
+  for(n in 1:nrow(pc.m))
+  {
+    ss = pc.m$subunits[n]
+    ss = unlist(strsplit(as.character(ss), ',')) 
+    nb = c(nb, length(ss))
+  }
+  pc.m$nb.subunits = nb
+  xx = rbind(pc.m, annot.corum)
+  #colnames(xx) = colnames
+  
+  annot.corum = xx
+  save(annot.corum, file='Rdata/Annotation_Corum_all_with_Manual.Rdata')
+  #write.table(uniprot, file='uniprot-GeneIDs-mapping-human-mouse-rat_v2.txt',quote=FALSE, sep='\t',col.names=TRUE, row.names=FALSE)
+  #write.table(annot.corum, file='Annotation_complexes_corum_v2.txt',quote=FALSE, sep='\t',col.names=TRUE, row.names=FALSE) 
+  return(annot.corum)
+}
+
 statistics.complexes = function(vect)
 {
 	cutoff.rhy = 0.01
@@ -187,7 +295,9 @@ statistics.complexes.all.fitting = function(vect)
 	return(stat);
 }
 
-
+##########################################
+# protein complex plots
+##########################################
 Plots.complexes.all.fitting = function(kk, pdfname)
 {
 	load(file='Rdata/Annotation_TFs_cofactors_chromatin_regulators_rna_processing_splicesome_used.Rdata')
@@ -563,6 +673,66 @@ Plots.complexes.v3 = function(annot, nn, pdfname)
 	
 }
 
+Plots.complexes.subunits = function(annot, nn, pdfname)
+{
+  #table.sx = read.table(file='Tables_DATA/Table_Nuclear_Prot_v2.txt', sep='\t', header=TRUE, as.is = c(2,3,10:19))
+  load(file='Rdata/Table_microsomal_log2_L_H_names_mRNA_total_nuclear.Rdata')
+  nuclear = microsomal;
+  
+  pdf(pdfname, width = 14, height = 12)
+  
+  ylim = c(-1.5, 1.5)
+  xlim = c(0,48)
+  
+  for(n in nn)
+  {
+    index = annot$index.detected[n]
+    index = as.numeric(unlist(strsplit(as.character(index), ',')))
+    genes = unlist(strsplit(as.character(annot$subunits.detected[n]), ','))
+    #genes = genes[which(nuclear$nb.timepoints[index]==16)]
+    ii = which(nuclear$nb.timepoints[index]>=8)
+    index = index[ii]
+    genes = genes[ii]
+    
+    if(length(index)>1)
+    {
+      rainbow = rainbow(length(index),s = 0.85, v = 0.85)
+      
+      test = as.matrix(nuclear[index,c(1:16)])
+      test =apply(test, 1, standadize.nona)
+      test = t(test)
+      pvals = signif(nuclear$pval[index],d=2)
+      phases = signif(nuclear$phase[index],d=2)
+      amps = signif(nuclear$amp[index],d=2)
+      
+      o1 = order(pvals)
+      pvals = pvals[o1]
+      test = test[o1,]
+      phases = phases[o1]
+      amps = amps[o1]
+      index = index[o1]
+      genes = genes[o1]
+      ylim = range(test, na.rm=TRUE)
+      plot(1,1,type = 'n', xlab = 'ZT[h]', ylab = 'standadized abundance', xlim = xlim, ylim = ylim,main=paste(annot[n,2],',\n', 'Coverage=', signif(as.numeric(annot$percent.detected[n]),d=2)*100, '%', 
+                                                                                                               ', pval.svd = ', signif(as.numeric(annot$pval.svd[n]), d=2), ', qv.rhythmic = ', signif(as.numeric(annot$qv.p1[n]), d=2), sep=''))
+      abline(h=0, col='gray',lwd=4.0)
+      
+      for(i in 1:nrow(test))
+      {
+        i.rel = i; 
+        text.col = 'black';
+        
+        type.plot='b';
+        points(c(0:15)*3, (test[i,]), type=type.plot, cex=2.0, lwd=2.0, col = rainbow[(i.rel-1)%%nrow(test)+1], lty = (i.rel-1)%/%nrow(test)+1)
+        #points(c(0:15)*3, test[i,], type='l', cex=2.0, lwd=2.0, col = rainbow[(i.rel-1)%%nrow(test)+1], lty = 2)
+        legend(x = 0.75*xlim[2],y = ylim[2]*(1-i.rel*min(1.0/20,(1.0/nrow(test)))), legend = paste(genes[i],', pval= ', pvals[i], ', amp= ', amps[i],sep=''), text.col=text.col, col =  rainbow[(i.rel-1)%%nrow(test)+1], lty = (i.rel-1)%/%nrow(test)+1, bty = 'n' )
+      }
+    }
+  }
+  dev.off()
+  
+}
+
 Plots.complexes.details = function(annot, nn, pdfname)
 {
 	#regulator.all = c('tfs.curated', 'cofactors', 'chromatin.remodellers',  'rna.processing.proteins','splicesome', 'kinases', 'phosphatases')
@@ -814,6 +984,11 @@ Plots.complexes.wt.ko = function(aa, pdfname)
 }
 
 
+stadardization.nona = function(x)
+{	
+  xx = (x-mean(x[which(!is.na(x)==TRUE)]))/sd(x[which(!is.na(x)==TRUE)])
+  return(xx)
+}
 
 statistics.complexes.all.fitting.2 = function(vect)
 {
@@ -821,11 +996,7 @@ statistics.complexes.all.fitting.2 = function(vect)
 	cutoff.sim = 0.80
 	cutoff.nb.timepoints = 8
 	
-	stadardization.nona = function(x)
-	{	
-		xx = (x-mean(x[which(!is.na(x)==TRUE)]))/sd(x[which(!is.na(x)==TRUE)])
-		return(xx)
-	}
+	
 	
 	stat = c()
 	

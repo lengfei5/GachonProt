@@ -580,7 +580,6 @@ if(Make.plots.for.rhythmicity){
   
 }
 
-
 ########################################################
 ########################################################
 # Section : Combine microsomal proteins with mRNA, total proteins, nuclear proteins.
@@ -786,119 +785,42 @@ if(Analysis.protein.complexes)
   source('proteomics_functions.R')
   source('microsomal_functions.R')
   
-  Processing.CORUM.all.Complexes.add.manually = FALSE
-  if(Processing.CORUM.all.Complexes.add.manually)
+  microsomal = mcm
+  microsomal$nb.timepoints = microsomal$nb.timepoints.WT.24hRhythmicity
+  microsomal.names = c()
+  for(n in 1:nrow(microsomal))
   {
-    annotation = read.csv('Annotations/allComplexes_CORUM.csv', sep=';')
-    #ii = which(annotation$organism=='Mouse'|annotation$organism=='Human'|annotation$organism=='Rat')
-    annot =annotation[,c(1,2,3,4,5)]
-    
-    mapping = read.table('/Users/jiwang/Proteomics_anaylysis/Nuclear_proteins/Protein_Complexes/refGene2uniprotID.txt', header=FALSE, sep='\t')
-    uniprot = read.csv('/Users/jiwang/Proteomics_anaylysis/Nuclear_proteins/Uniprot_proteins_ID.csv',header=TRUE)
-    uniprot.mouse = read.delim('/Users/jiwang/Proteomics_anaylysis/Nuclear_proteins/Protein_Complexes/uniprot-taxonomy-mouse.tab', header=TRUE)
-    uniprot.human = read.delim('/Users/jiwang/Proteomics_anaylysis/Nuclear_proteins/Protein_Complexes/uniprot-taxonomy-human.tab', header=TRUE)
-    uniprot.rat = read.delim('/Users/jiwang/Proteomics_anaylysis/Nuclear_proteins/Protein_Complexes/uniprot-taxonomy-rat.tab', header=TRUE)
-    uniprot = rbind(uniprot.mouse, uniprot.human, uniprot.rat)
-    
-    annot.corum = annot;
-    
-    subunits = c() 
-    nb.subunits = c()
-    for(n in 1:nrow(annot.corum))
+    if(!is.na(microsomal$Gene.names[n])==TRUE)
     {
-      cat(n, '\n');
-      test = annot.corum[n,5]
-      test = gsub("[()]","",test) 
-      test = unlist(strsplit(as.character(test),","))
-      ii = match(test, uniprot[,1])
-      if(length(which(!is.na(ii)==TRUE))!=length(test)) print(n)
-      ii = ii[which(!is.na(ii)==TRUE)]
-      nb.subunits = c(nb.subunits, length(ii))
-      gene = c()
-      for(kk in ii) 
-      {
-        gg = sapply(unlist(strsplit(as.character(uniprot$Gene.names[kk]), ' ')), first.upper, USE.NAMES = FALSE);
-        mm = match(gg, microsomal.names[,3])
-        if(length(which(!is.na(mm)==TRUE))>0) gene = c(gene, gg[which(!is.na(mm)==TRUE)][1])
-        else gene = c(gene, gg[1])
-      }
-      subunits = c(subunits, paste(gene, sep='', collapse=','))
+      gg = unlist(strsplit(as.character(microsomal$Gene.names[n]), ';'));
+      for(g.test in gg) microsomal.names = rbind(microsomal.names, c(n, as.character(microsomal$Gene.names[n]), g.test));
     }
-    
-    annot.corum = data.frame(annot.corum, nb.subunits, subunits, stringsAsFactors = FALSE)
-    
-    #### Mannually Add complexes
-    ### Bmal1-Clock complex
-    pc.m = c('C1', 'Bmal1-Clock Heterodimer', rep(NA, 5), 'Arntl,Clock')
-    ### Per complex
-    pc.m = rbind(pc.m, c('C2', 'PER complex (main)', rep(NA, 5), 'Per1,Per2,Per3,Cry1,Cry2'))
-    pc.m = rbind(pc.m, c('C3', 'Bmal-Clock-Pers complex 1', rep(NA, 5), 'Arntl,Clock,Per1,Per2,Per3,Cry1,Cry2'))
-    pc.m = rbind(pc.m, c('C4', 'Clock-Bmal1 complex 1', rep(NA, 5), 'Clock,Arntl,Gnb2l1,Prkaca,Thrap3')) ## Robles et al. 2010 and Lande-Diner et al. 2013
-    pc.m = rbind(pc.m, c('C5', 'PER complex 1', rep(NA, 5), 'Per1,Per2,Per3,Cry1,Cry2,Nono,Wdr5')) ##Brown et al.2005
-    pc.m = rbind(pc.m, c('C6', 'PER complex 2', rep(NA, 5), 'Per1,Per2,Per3,Cry1,Cry2,Nono,Wdr5,Csnk1d,Csnk1e,Sfpq,Sin3a,Sin3b,Hdac1,Hdac2,Sap18,Sap30,Rbbp4,Rbbp7')) ##Duong et al. 2011
-    pc.m = rbind(pc.m, c('C7', 'PER complex 3', rep(NA, 5), 'Per1,Per2,Per3,Cry1,Cry2,Nono,Wdr5,Csnk1d,Csnk1e,Ddx5,Dhx9,Setx')) ## Padmanabhan et al. 2012
-    pc.m = rbind(pc.m, c('C8', 'PER complex 4', rep(NA, 5), 'Per1,Per2,Per3,Cry1,Cry2,Nono,Wdr5,Csnk1d,Csnk1e,Suv39h1,Suv39h2,Cbx3,Trim28')) ## Duong et al. 2014
-    
-    pc.m = rbind(pc.m, c('C20', 'Bmal1-Clock complex 2', rep(NA, 5), 'Arntl,Clock,Mta2,Chd4')) ## Kim et al. 2014
-    pc.m = rbind(pc.m, c('C21', 'PER complex 5', rep(NA, 5), 'Per1,Per2,Per3,Cry1,Cry2,Hdac1,Hdac2,Mbd2,Gatad2a,Rbbp4')) ## Kim et al. 2014
-    pc.m = rbind(pc.m, c('C22', 'PER complex 6', rep(NA, 5), 'Per1,Per2,Per3,Cry1,Cry2,Nono,Wdr5,Csnk1d,Csnk1e,Suv39h1,Suv39h2,Cbx3,Trim28')) ## Kim et al. 2014
-    
-    ### Polymerase complexes
-    pc.m = rbind(pc.m, c('C9', 'RNA Polymerase I complex (parts)', rep(NA, 5), 'Polr1a,Polr1b,Polr1c,Polr1d,Polr1e,Polr2e')) ## from Fred
-    pc.m = rbind(pc.m, c('C10', 'RNA Polymerase I complex (whole)', rep(NA, 5), 'Polr1a,Polr1b,Polr1c,Polr1d,Polr1e,Polr2e,Polr2f,Polr2h,Polr2l,Polr2k,Polr1e'))
-    pc.m = rbind(pc.m, c('C11', 'RNA Polymerase II complex (whole)', rep(NA, 5), 'Polr2a,Polr2b,Polr2c,Polr2j,Polr2l,Polr2e,Polr2f,Polr2h,Polr2l,Polr2k,Polr2d,Polr2g,Gtf2f1,Gtf2f2'))
-    pc.m = rbind(pc.m, c('C12', 'RNA Polymerase III complex (whole)', rep(NA, 5), 'Polr3a,Polr3b,Polr1c,Polr1d,Polr3d,Polr2e,Polr2f,Polr2h,Polr2l,Polr2k,Polr3h,Polr3k,Polr3c,Polr3f,Polr3g,Polr3l,Polr3e'))
-    
-    ### add methyltransferase complexes
-    pc.m = rbind(pc.m, c('C13', 'H3k4 methyltransferase complex (Set1a)', rep(NA, 5), 'Setd1a,Ash2l,Rbbp5,Wdr5,Dpy30,Cxxc1,Wdr82,Hcfc1,Hcfc2'))
-    pc.m = rbind(pc.m, c('C14', 'H3k4 methyltransferase complex (Set1b)', rep(NA, 5), 'Setd1b,Ash2l,Rbbp5,Wdr5,Dpy30,Cxxc1,Wdr82,Bod1,Bod1l,Hcfc1,Hcfc2'))
-    pc.m = rbind(pc.m, c('C15', 'H3k4 methyltransferase complex (Mll1)', rep(NA, 5), 'Mll1,Ash2l,Rbbp5,Wdr5,Dpy30,Hcfc1,Hcfc2,Men1'))
-    pc.m = rbind(pc.m, c('C16', 'H3k4 methyltransferase complex (Mll2)', rep(NA, 5), 'Mll2,Ash2l,Rbbp5,Wdr5,Dpy30,Hcfc1,Hcfc2,Men1,Psip1'))
-    pc.m = rbind(pc.m, c('C17', 'H3k4 methyltransferase complex (Mll3)', rep(NA, 5), 'Mll3,Ash2l,Rbbp5,Wdr5,Dpy30,Ncoa6,Kdm6a,Paxpip1,Pagr1'))
-    pc.m = rbind(pc.m, c('C18', 'H3k4 methyltransferase complex (Mll4)', rep(NA, 5), 'Mll4,Ash2l,Rbbp5,Wdr5,Dpy30,Ncoa6,Kdm6a,Paxpip1,Pagr1'))
-    pc.m = rbind(pc.m, c('C19', 'H3k4 methyltransferase complex (Mll5)', rep(NA, 5), 'Mll5,Hcfc1,Ogt,Stk38,Ppp1ca,Ppp1cb,Ppp1cc,Actb'))
-    
-    pc.m = rbind(pc.m, c('C23', 'HIRA histone chaperone complex', rep(NA, 5), 'Hira,Ubn1,Cabin1,Asf1a'))
-    pc.m = rbind(pc.m, c('C24', 'Rev-ErbA-alpha-Ncor1-Hdac3', rep(NA, 5), 'Nr1d1,Ncor1,Hdac3')) ## Yin and Lazar, 2005
-    
-    #pc.m = rbind(pc.m, c('C13', 'PER complex', rep(NA, 5), 'Per1,Per2,Per3,Cry1,Cry2,Nono,Wdr5,Csnk1d,Csnk1e,Sfpq'))
-    pc.m = pc.m[, c(1:6, 8)]
-    colnames = colnames(annot.corum)
-    colnames(pc.m) = colnames
-    pc.m = data.frame(pc.m, stringsAsFactors=FALSE)
-    
-    nb = c()
-    for(n in 1:nrow(pc.m))
-    {
-      ss = pc.m$subunits[n]
-      ss = unlist(strsplit(as.character(ss), ',')) 
-      nb = c(nb, length(ss))
-    }
-    pc.m$nb.subunits = nb
-    xx = rbind(pc.m, annot.corum)
-    #colnames(xx) = colnames
-    
-    annot.corum = xx
-    save(annot.corum, file='Rdata/Annotation_Corum_all_with_Manual.Rdata')
-    #write.table(uniprot, file='uniprot-GeneIDs-mapping-human-mouse-rat_v2.txt',quote=FALSE, sep='\t',col.names=TRUE, row.names=FALSE)
-    #write.table(annot.corum, file='Annotation_complexes_corum_v2.txt',quote=FALSE, sep='\t',col.names=TRUE, row.names=FALSE) 
   }
+  microsomal.names = data.frame(microsomal.names, stringsAsFactors = FALSE);
+  colnames(microsomal.names) = c('index', 'Gene.names', 'gene');
+  
+  # prepare the CORUM protein complexes annotation
+  # annot.corum = Processing.CORUM.all.Complexes.add.manually()
   
   Corum.table.generate = FALSE
   if(Corum.table.generate)
   {
-    load(file='Rdata/Annotation_Corum_all_with_Manual.Rdata')
+    load(file= paste0(oldDir, 'Rdata/Annotation_Corum_all_with_Manual.Rdata'))
   
     ii = which(annot.corum$Synonyms=='')
     annot.corum$Synonyms[ii] = NA
     colnames(annot.corum)[5] = 'subunits.UniProt.IDs'
     
     microsomal.names = data.frame(as.integer(microsomal.names[,1]), microsomal.names[, c(2,3)], stringsAsFactors = FALSE)
+    
+    
+    options(warn=1)
     detected = c()
     index = c()
     nb.detected = c()
     for(n in 1:nrow(annot.corum))
     {
+      cat(n, '\n')
       test = annot.corum$subunits[n]
       test = unlist(strsplit(as.character(test),","))
       
@@ -935,7 +857,8 @@ if(Analysis.protein.complexes)
     colnames(annot.corum)[8:11] = c('subunits.detected', 'index.detected', 'nb.detected', 'percent.detected')
     #kk = which(annot.corum$nb.detected>1)
     #annot.corum = annot.corum[kk,]
-    save(annot.corum, file='Rdata/Annotation_Corum_all_with_Manual_detected_microsomal.Rdata')
+    save(annot.corum, file=paste0(RdataDir, 'Annotation_Corum_all_with_Manual_detected_microsomal.Rdata'))
+    
   }
   
   #### Analysis rhythmicity and similarity of detected protein complexes
@@ -945,6 +868,7 @@ if(Analysis.protein.complexes)
     load(file='Rdata/Annotation_Corum_all_with_Manual_detected_microsomal.Rdata')
     source('/Users/jiwang/Proteomics_anaylysis/Nuclear_proteins/f24_modified_1.0.r')
     #source('/Users/jiwang/Proteomics_anaylysis/Nuclear_proteins/functions_nuclear.R')
+    
     annot = annot.corum
     kk = which(annot$nb.subunits>0)
     annot = annot[kk,]
