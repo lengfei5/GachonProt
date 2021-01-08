@@ -883,9 +883,11 @@ if(Analysis.protein.complexes)
         
     pdfname = paste0(resDir, '/SVD_PC_plot_microsomal.pdf')
     res = matrix(NA, ncol=10, nrow=nrow(annot))
-    #res = statistics.complexes.svd(annot[ii,], res[ii,], pdfname)
     
-    res = statistics.complexes.svd(annot=annot, prot.data = microsomal, res = res, pdfname = pdfname, TEST = TRUE)
+    
+    ### main function of protein complex svd test
+    #res = statistics.complexes.svd(annot[ii,], res[ii,], pdfname)
+    res = statistics.complexes.svd(annot=annot, prot.data = microsomal, res = res, pdfname = pdfname, TEST = FALSE)
     
     res = data.frame(annot, res, stringsAsFactors=FALSE)
     
@@ -893,64 +895,14 @@ if(Analysis.protein.complexes)
     res = res[kk,]
     dim(res)
     
-    save(annot, res, file='Rdata/Annotation_Corum_all_with_Manual_detected_microsomal_SVD.Rdata')
-  
-    ###### reduce the redundancy of PC table
-    index.detected.clean = c()
-    for(n in 1:nrow(res))
-    {
-      test = res$index.detected[n]
-      test = unlist(strsplit(as.character(test), ','))
-      test = as.numeric(test)
-      test = unique(test)
-      test = test[order(test)]
-      index.detected.clean = c(index.detected.clean, paste(test, sep='', collapse=','))
-    }
-    res$index.detected.clean = index.detected.clean
-    test = unique(res$index.detected.clean)
-    index = c()
-    id = c()
-    names = c()
-    species = c()
-    percent.detected = c()
+    save(annot, res, file= paste0(RdataDir, 'Annotation_Corum_all_with_Manual_detected_microsomal_SVD.Rdata'))
     
-    for(n in 1:length(test))
-    {
-      jj = which(res$index.detected.clean==test[n])
-      if(length(jj)==1)
-      {
-        index = c(index,jj)
-        
-        id = c(id, as.character(res[jj,1]))
-        names = c(names, as.character(res[jj,2]))
-        species = c(species, as.character(res[jj,4]))
-        percent.detected = c(percent.detected, res$percent.detected[jj])
-      }
-      if(length(jj)>1) {
-        print(n); 
-        print(res[jj,c(1:2,4)]);
-        print('......');
-        
-        index = c(index,jj[1])
-        
-        id = c(id, paste(res[jj,1], sep='', collapse=','))
-        names = c(names, paste(res[jj,2], sep='', collapse=','))
-        species = c(species, paste(res[jj,4],sep='', collapse=','))
-        percent.detected = c(percent.detected, paste(res$percent.detected[jj], sep='', collapse=','))
-      }
-    }
-    xx = data.frame(id, names, species, res[index,-c(1:4)])
-    colnames(xx)[c(1:3)] = colnames(res)[c(1,2,4)]
-    xx$percent.detected = percent.detected
-    res = xx
+    ### reduce the redundancy of PC table
+    load(file= paste0(RdataDir, 'Annotation_Corum_all_with_Manual_detected_microsomal_SVD.Rdata'))
+    res = reduce.redundancy.protein.complex(res)
     
-    filename = 'Rdata/Analysis_res_Protein_Complexes_SVD_clean_v1.Rdata'
-    save(annot, res, file=filename)
-    #write.table(res, file='/Users/jiwang/Dropbox/GachonProt/Microsomal_Prot/Tables/Protein_Complexe_SVD_analysis.txt', 
-    #            sep='\t', quote=FALSE, row.names = FALSE, col.names = TRUE)
-    
+    ### calculate svd statistics using precomputed background
     load(file='/Users/jiwang/Proteomics_anaylysis/Nuclear_proteins/Rdata/Background_PC_SVD_v3.Rdata')
-   
     nb.samples = 1000
     bg0 = rep(NA, nrow(res))
     bg1 = rep(NA, nrow(res))
@@ -985,13 +937,14 @@ if(Analysis.protein.complexes)
     #length(which(res$p1<res$pval.svd))
     #length(which(res$pval.svd<0.05))
     #length(which(res$pval.svd<0.05 & res$qv.p1<0.05))
-    
     kk = which(res$pval.svd<0.05)
     
     aa = res[kk, ] 
     o1 = order(aa$pval.svd)
     aa = aa[o1, ]
+    
     source('function_microsomal.R')
+    
     #source('/Users/jiwang/Proteomics_anaylysis/Nuclear_proteins/functions_nuclear.R')
     #Plots.complexes.details(aa, c(1:nrow(aa)), 'Plots/All_PCs_Corum_subunits_Selected_SVD_pval_0.05_details.pdf')
     Plots.complexes.subunits(aa, c(1:nrow(aa)), 'Plots/All_PCs_Corum_subunits_Selected_SVD_pval_0.05.pdf')

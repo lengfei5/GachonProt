@@ -3,6 +3,13 @@ library(Hmisc)
 library(CircStats)
 cutoff.rhy = 0.01
 cutoff.sim = 0.80
+
+########################################################
+########################################################
+# Section : general utility functions
+#  
+########################################################
+########################################################
 first.upper = function(character)
 {
     test = character
@@ -69,42 +76,261 @@ phase.difference = function(kk)
 	return(phase.diff)
 }
 
-mean.correlation.rhythmic = function(kk, index)
+########################################################
+########################################################
+# Section : functions of mutatn vs wt 
+# 
+########################################################
+########################################################
+#### correlation between WT (16 time points) and KO (4 time points)
+correlation.wt.ko = function(data.wt.ko, time.wt=c(0:15)*3, time.ko=c(0,6,12,18))
 {
-	correlation = c()
-	for(k in kk)
-	{	
-		correl = c()
-		v1 = as.numeric(nuclear[k, c(1:16)]); 
-		index.cor = index[which(index!=k)]
-		for(ii in index.cor) 
-		{	
-#print(c(k, ii))
-			v2 = as.numeric(nuclear[ii,c(1:16)])
-			correl = c(correl, mutual.correlation(v1, v2))
-		}
-		correlation = c(correlation, mean(correl))
-	}
-	return(correlation)
-	
+  wt1 = data.wt.ko[c(1,3,5,7)]
+  wt2 = data.wt.ko[c(9,11,13,15)]
+  ko = data.wt.ko[17:20]
+  wt = c()
+  for(n in 1:4)
+  {
+    wt12 = c(wt1[n], wt2[n])
+    wt = c(wt, mean(wt12[which(!is.na(wt12))]))
+  }
+  if(all(!is.na(wt)) && all(!is.na(ko)))
+  {
+    return(cor(wt, ko))
+  }else{
+    return(NA)
+  }
 }
-mean.correlation.subunits = function(index)
+chow.test = function(data.wt.ko, time.wt=c(0:15)*3, time.ko=c(0,6,12,18), period=24)
 {
-	correlation = c()
-	ii = c(1:(length(index)-1))
-	for(i in ii)
-	{
-		jj = c(1:length(index))
-		jj = jj[which(jj>i)]
-		for(j in jj)
-		{
-			v1 = as.numeric(nuclear[index[i], c(1:16)]); 
-			v2 = as.numeric(nuclear[index[j], c(1:16)])
-			correlation = c(correlation, mutual.correlation(v1, v2))
-		}
-	}
-	return(mean(correlation))
+  #index =138; data.wt = as.numeric(aa[index, c(1:16)]);data.com = as.numeric(aa[index, grep('Cry.KO', colnames(nuclear))]);data.wt.ko =  c(data.wt, data.com); time.wt=c(0:15)*3; time.ko=c(0,6,12,18);period=24;
+  wt = as.numeric(data.wt.ko[1:16])
+  corr.ko = correlation.wt.ko(data.wt.ko)
+  kk = which(!is.na(wt)==TRUE)
+  wt = wt[kk]
+  time.wt = time.wt[kk]
+  ko = as.numeric(data.wt.ko[17:20])
+  jj = which(!is.na(ko)==TRUE)
+  ko = ko[jj]
+  time.ko = time.ko[jj]
+  nb.ko = length(ko)
+  if(length(wt)<4|length(ko)<3)
+  {
+    pval.wt.ko = NA
+  }else{
+    ### fitting wt.ko pool
+    wt.ko = c(wt, ko)
+    time.wt.ko = c(time.wt, time.ko)
+    c=cos(2*pi*time.wt.ko/period)
+    s=sin(2*pi*time.wt.ko/period)
+    fit = lm(wt.ko~c+s)
+    ee = sum(fit$residuals^2)
+    
+    ###fitting wt
+    c1=cos(2*pi*time.wt/period)
+    s1=sin(2*pi*time.wt/period)
+    fit1 = lm(wt~c1+s1)
+    ee1 = sum(fit1$residuals^2)
+    
+    if(length(ko)>3)
+    {
+      ### fitting ko
+      c2=cos(2*pi*time.ko/period)
+      s2=sin(2*pi*time.ko/period)
+      fit2 = lm(ko~c2+s2)
+      ee2 = sum(fit2$residuals^2)
+      
+      F2 = (ee-ee1-ee2)/3/((ee1+ee2)/(length(wt)+length(ko)-2*3))
+      pval.wt.ko = pf(F2, 3, (length(wt)+length(ko)-2*3), lower.tail = FALSE, log.p = FALSE)
+    }else{
+      F1 = (ee-ee1)/length(ko)/(ee1/(length(wt)-3))
+      pval.wt.ko = pf(F1, length(ko), (length(wt)-3), lower.tail = FALSE, log.p = FALSE)
+    }
+    
+  }
+  
+  #print(pval.wt.ko)
+  return(c(pval.ko=pval.wt.ko, nb.ko=nb.ko, corr.ko =corr.ko))
 }
+
+model.sel.wt.ko = function(data.wt.ko, time.wt=c(0:15)*3, time.ko=c(0,6,12,18), period=24)
+{
+  #index =138; data.wt = as.numeric(aa[index, c(1:16)]);data.com = as.numeric(aa[index, grep('Cry.KO', colnames(nuclear))]);data.wt.ko =  c(data.wt, data.com); time.wt=c(0:15)*3; time.ko=c(0,6,12,18);period=24;
+  wt = as.numeric(data.wt.ko[1:16])
+  corr.ko = correlation.wt.ko(data.wt.ko)
+  kk = which(!is.na(wt)==TRUE)
+  wt = wt[kk]
+  time.wt = time.wt[kk]
+  ko = as.numeric(data.wt.ko[17:20])
+  jj = which(!is.na(ko)==TRUE)
+  ko = ko[jj]
+  time.ko = time.ko[jj]
+  nb.ko = length(ko)
+  if(length(wt)<=8|length(ko)<=3)
+  {
+    prob.wt.ko = c(NA, NA, NA)
+  }else{
+    ### fitting wt.ko pool with rhythmic parameters
+    wt.ko = c(wt, ko)
+    time.wt.ko = c(time.wt, time.ko)
+    c=cos(2*pi*time.wt.ko/period)
+    s=sin(2*pi*time.wt.ko/period)
+    fit = lm(wt.ko~c+s)
+    rss = sum(fit$residuals^2)
+    
+    ###fitting wt with rhythmic parameter
+    c1=cos(2*pi*time.wt/period)
+    s1=sin(2*pi*time.wt/period)
+    fit1 = lm(wt~c1+s1)
+    rss1 = sum(fit1$residuals^2)
+    
+    ### fitting ko with rhythmic parameters
+    c2=cos(2*pi*time.ko/period)
+    s2=sin(2*pi*time.ko/period)
+    fit2 = lm(ko~c2+s2)
+    rss2 = sum(fit2$residuals^2)
+    
+    ### fitting ko with flat parameters
+    rss3 = sum((ko-mean(ko))^2)
+    
+    ## model 1: rhythmic with same parameters
+    n = length(wt.ko)
+    BIC1 = n*log(rss/n) + 3*log(n);
+    BIC2 = n*log((rss1+rss2)/n) + 6*log(n);
+    BIC3 = n*log((rss1+rss3)/n) + 4*log(n);
+    
+    BIC = c(BIC1, BIC2, BIC3)
+    bic = BIC-min(BIC)
+    prob.model = exp(-0.5*bic)
+    prob.model = prob.model/sum(prob.model)
+    
+    prob.wt.ko = prob.model
+  }
+  
+  #print(pval.wt.ko)
+  names(prob.wt.ko) = c('prob.M1', 'prob.M2', 'prob.M3')
+  return(c(prob.wt.ko, nb.ko=nb.ko, corr.ko =corr.ko))
+}
+
+
+model.sel.wt.ko.allModel = function(data.wt.ko, time.wt=c(0:15)*3, time.ko=c(0,6,12,18), period=24)
+{
+  #index =138; data.wt = as.numeric(aa[index, c(1:16)]);data.com = as.numeric(aa[index, grep('Cry.KO', colnames(nuclear))]);data.wt.ko =  c(data.wt, data.com); time.wt=c(0:15)*3; time.ko=c(0,6,12,18);period=24;
+  wt = as.numeric(data.wt.ko[1:16])
+  corr.ko = correlation.wt.ko(data.wt.ko)
+  kk = which(!is.na(wt)==TRUE)
+  wt = wt[kk]
+  time.wt = time.wt[kk]
+  ko = as.numeric(data.wt.ko[17:20])
+  jj = which(!is.na(ko)==TRUE)
+  ko = ko[jj]
+  time.ko = time.ko[jj]
+  nb.ko = length(ko)
+  if(length(wt)<=8|length(ko)<=3)
+  {
+    prob.wt.ko = c(NA, NA, NA, NA, NA);
+  }else{
+    ### fitting wt.ko pool with same rhythmic parameters
+    wt.ko = c(wt, ko)
+    time.wt.ko = c(time.wt, time.ko)
+    c=cos(2*pi*time.wt.ko/period)
+    s=sin(2*pi*time.wt.ko/period)
+    fit = lm(wt.ko~c+s)
+    rss = sum(fit$residuals^2)
+    
+    ###fitting wt and ko with same flat parameter
+    rss5 = sum((wt.ko-mean(wt.ko))^2)
+    
+    ###fitting wt with rhythmic parameter
+    c1=cos(2*pi*time.wt/period)
+    s1=sin(2*pi*time.wt/period)
+    fit1 = lm(wt~c1+s1)
+    rss1 = sum(fit1$residuals^2)
+    
+    ### fitting ko with rhythmic parameters
+    c2=cos(2*pi*time.ko/period)
+    s2=sin(2*pi*time.ko/period)
+    fit2 = lm(ko~c2+s2)
+    rss2 = sum(fit2$residuals^2)
+    
+    ### fitting ko with flat parameters
+    rss3 = sum((ko-mean(ko))^2)
+    
+    ###fitting wt and ko with same flat parameter
+    rss4 = sum((wt-mean(wt))^2)
+    
+    ## model 1: rhythmic with same parameters
+    n = length(wt.ko)
+    BIC1 = n*log(rss/n) + 3*log(n);
+    BIC2 = n*log((rss1+rss2)/n) + 6*log(n);
+    BIC3 = n*log((rss1+rss3)/n) + 4*log(n);
+    BIC4 = n*log((rss4+rss2)/n) + 4*log(n);
+    BIC5 = n*log(rss5/n) + 1*log(n);
+    
+    BIC = c(BIC1, BIC2, BIC3, BIC4, BIC5)
+    bic = BIC-min(BIC)
+    prob.model = exp(-0.5*bic)
+    prob.model = prob.model/sum(prob.model)
+    
+    prob.wt.ko = prob.model
+  }
+  
+  #print(pval.wt.ko)
+  names(prob.wt.ko) = c('prob.M1', 'prob.M2', 'prob.M3', 'prob.M4', 'prob.M5')
+  return(c(prob.wt.ko, nb.ko=nb.ko, corr.ko =corr.ko))
+}
+
+model.sel.allModel = function(data1, t1=c(0:15)*3, data2, t2=c(0:15)*3, period=24)
+{
+  # period = 24; data1 = nuclear[3, c(1:16)]; data2 = nuclear[4, c(1:16)]; t1 = c(0:15)*3; t2 = t1;
+  data1 = as.numeric(data1)
+  data2 = as.numeric(data2)
+  d1 = (data1 - mean(data1, na.rm = TRUE))/sd(data1, na.rm = TRUE);
+  d2 = (data2 - mean(data2, na.rm = TRUE))/sd(data2, na.rm = TRUE);
+  d1 = d1[which(!is.na(d1)==TRUE)];t1 = t1[which(!is.na(d1)==TRUE)];
+  d2 = d2[which(!is.na(d2)==TRUE)];t2 = t2[which(!is.na(d2)==TRUE)];
+  
+  ### M1: fitting the pool of d1 and d2 with same rhythmic parameters
+  d = c(d1, d2)
+  t = c(t1, t2)
+  c=cos(2*pi*t/period)
+  s=sin(2*pi*t/period)
+  fit = lm(d~c+s)
+  rss = sum(fit$residuals^2)
+  
+  ### M2: fitting d1 and d2 with different rhythmic parameters
+  c1=cos(2*pi*t1/period)
+  s1=sin(2*pi*t1/period)
+  fit1 = lm(d1~c1+s1)
+  rss1 = sum(fit1$residuals^2)
+  
+  c2=cos(2*pi*t2/period)
+  s2=sin(2*pi*t2/period)
+  fit2 = lm(d2~c2+s2)
+  rss2 = sum(fit2$residuals^2)
+  
+  ## model 1: rhythmic with same parameters
+  n = length(d);
+  BIC1 = n*log(rss/n) + 2*log(n);
+  BIC2 = n*log((rss1+rss2)/n) + 4*log(n);
+  #BIC1 = n*log(rss/n) + 2*2;
+  #BIC2 = n*log((rss1+rss2)/n) + 4*2;
+  
+  BIC = c(BIC1, BIC2)
+  bic = BIC-min(BIC)
+  prob.model = exp(-0.5*bic)
+  prob.model = prob.model/sum(prob.model)
+  #prob.model = c(prob.model, which(prob.model==max(prob.model)))
+  #print(pval.wt.ko)
+  names(prob.model) = c('prob.BIC.M1', 'prob.BIC.M2')
+  
+  #plot(t1, d1, type='b', col='blue', ylim=range(c(d1, d2)))
+  #points(t2, d2, type='b', col='black')
+  
+  return(prob.model)
+  
+}
+
 
 ########################################################
 ########################################################
@@ -112,6 +338,42 @@ mean.correlation.subunits = function(index)
 # 
 ########################################################
 ########################################################
+mean.correlation.rhythmic = function(kk, index)
+{
+  correlation = c()
+  for(k in kk)
+  {	
+    correl = c()
+    v1 = as.numeric(nuclear[k, c(1:16)]); 
+    index.cor = index[which(index!=k)]
+    for(ii in index.cor) 
+    {	
+      #print(c(k, ii))
+      v2 = as.numeric(nuclear[ii,c(1:16)])
+      correl = c(correl, mutual.correlation(v1, v2))
+    }
+    correlation = c(correlation, mean(correl))
+  }
+  return(correlation)
+  
+}
+mean.correlation.subunits = function(index)
+{
+  correlation = c()
+  ii = c(1:(length(index)-1))
+  for(i in ii)
+  {
+    jj = c(1:length(index))
+    jj = jj[which(jj>i)]
+    for(j in jj)
+    {
+      v1 = as.numeric(nuclear[index[i], c(1:16)]); 
+      v2 = as.numeric(nuclear[index[j], c(1:16)])
+      correlation = c(correlation, mutual.correlation(v1, v2))
+    }
+  }
+  return(mean(correlation))
+}
 
 ##########################################
 # curate protein complex annotation
@@ -1115,13 +1377,13 @@ standadization.nona.impute = function(x)
 
 
 
-statistics.complexes.svd = function(annot, prot.data, res, pdfname='SVD_PC_plot_example.pdf', cutoff.nb.timepoints = 8, 
-                                    TEST = FALSE)
+statistics.complexes.svd = function(annot, prot.data, res, pdfname='SVD_PC_plot_example.pdf', 
+                                    index.data = c(1:16), 
+                                    cutoff.nb.timepoints = 8, TEST = FALSE)
 {	
-	pdfname = pdfname;
-	colnames(res) = c('nb.subunits.quantified', 'd.entropy', 'p1','p2', 'amp.p1', 'phase.p1','pval.p1', 'amp.p2', 'phase.p2','pval.p2')
+	colnames(res) = c('nb.subunits.quantified', 'd.entropy', 'svd.1st.component.p1','svd.2nd.compoent.p2', 
+	                  'amp.p1', 'phase.p1','pval.p1', 'amp.p2', 'phase.p2','pval.p2')
 	## ii = grep('RNA polymerase II holoenzyme complex', annot[,2])[1];vect = annot[ii,]
-	
 	if(TEST){annot = annot[c(1:20), ]; }
 	
 	pdf(pdfname, width=14, height=12)
@@ -1135,17 +1397,20 @@ statistics.complexes.svd = function(annot, prot.data, res, pdfname='SVD_PC_plot_
 		subunits = vect[which(names(vect)=='subunits.detected')];
 		index = as.numeric(unlist(strsplit(as.character(index), ',')))
 		subunits = unlist(strsplit(as.character(subunits), ','))
-		subunits = subunits[which(nuclear$nb.timepoints[index]>=cutoff.nb.timepoints)]
-		index = index[which(nuclear$nb.timepoints[index]>=cutoff.nb.timepoints)]
+		
+		ii.sels = which(prot.data$nb.timepoints[index]>=cutoff.nb.timepoints)
+		subunits = subunits[ii.sels]
+		index = index[ii.sels]
 		
 		res[n,1] = length(index)
-		if(length(index)>=2)	
-		{
+		
+		if(length(index)>=2) {
 			test = matrix(data = NA, nrow = length(index), ncol = 16)
 			for(kk in 1:length(index))
-			test[kk, ] = standadization.nona.impute(as.numeric(nuclear[index[kk], c(1:16)]))
+			test[kk, ] = standadization.nona.impute(as.numeric(prot.data[index[kk], index.data]))
 			rownames(test) = subunits
-			###SVD
+			
+			# SVD
 			ss = svd(test)
 			L = length(ss$d)
 			pl = ss$d^2/sum(ss$d^2)
@@ -1184,18 +1449,88 @@ statistics.complexes.svd = function(annot, prot.data, res, pdfname='SVD_PC_plot_
 			par(mfcol = c(2,2))
 			matplot(c(0:15)*3, t(test), type='b',lwd=1.5, ylab='Abundance of subunits', main=annot[n,2])
 			abline(h=0, col='gray',lwd=2.0)
-			plot(c(1:length(pl)), pl, type='b', pch=16, lwd=2.0,cex=1.0, ylab='% variance explained by each component', xlab='Index of components', ylim=c(0,1),main=paste('d= ', signif(dd, d=2),sep=''))
+			
+			plot(c(1:length(pl)), pl, type='b', pch=16, lwd=2.0,cex=1.0, 
+			     ylab='% variance explained by each component', 
+			     xlab='Index of components', ylim=c(0,1), 
+			     main=paste('d= ', signif(dd, d=2),sep=''))
 			abline(v=(which(pl>0.7/length(pl))[length(which(pl>0.7/length(pl)))]+0.2), col='red',lwd=2.5)
-			plot(c(0:15)*3, apply(ss$u, 2, mean)[1]*ss$v[,1], type='b',lwd=2.0,col='darkblue',ylab='1st component',main=paste('amp=', signif(stat1[3],d=2), ', phase= ', signif(stat1[5], d=2), ', pval=', signif(stat1[6], d=3)))
+			
+			plot(c(0:15)*3, apply(ss$u, 2, mean)[1]*ss$v[,1], type='b',lwd=2.0,col='darkblue',
+			     ylab='1st component',main=paste('amp=', signif(stat1[3],d=2), ', phase= ', signif(stat1[5], d=2), 
+			                                     ', pval=', signif(stat1[6], d=3)))
 			abline(h=0, col='gray',lwd=2.0)
-			plot(c(0:15)*3, apply(ss$u, 2, mean)[2]*ss$v[,2], type='b',lwd=2.0, col='darkgreen', ylab='2nd component', main=paste('amp=', signif(stat2[3],d=2), ', phase= ', signif(stat2[5], d=2), ', pval=', signif(stat2[6], d=3)))
+			plot(c(0:15)*3, apply(ss$u, 2, mean)[2]*ss$v[,2], type='b',lwd=2.0, col='darkgreen', ylab='2nd component', 
+			     main=paste('amp=', signif(stat2[3],d=2), ', phase= ', signif(stat2[5], d=2), ', pval=', signif(stat2[6], d=3)))
 			abline(h=0, col='gray',lwd=2.0)
 		}
 	}
+	
 	dev.off()
 	
 	return(res)
 }
+
+
+##########################################
+# clean the PC redundancy 
+##########################################
+reduce.redundancy.protein.complex = function(res)
+{
+  index.detected.clean = c()
+  
+  for(n in 1:nrow(res))
+  {
+    test = res$index.detected[n]
+    test = unlist(strsplit(as.character(test), ','))
+    test = as.numeric(test)
+    test = unique(test)
+    test = test[order(test)]
+    index.detected.clean = c(index.detected.clean, paste(test, sep='', collapse=','))
+  }
+  
+  res$index.detected.clean = index.detected.clean
+  test = unique(res$index.detected.clean)
+  index = c()
+  id = c()
+  names = c()
+  species = c()
+  percent.detected = c()
+  
+  for(n in 1:length(test))
+  {
+    jj = which(res$index.detected.clean==test[n])
+    if(length(jj)==1)
+    {
+      index = c(index,jj)
+      
+      id = c(id, as.character(res[jj,1]))
+      names = c(names, as.character(res[jj,2]))
+      species = c(species, as.character(res[jj,4]))
+      percent.detected = c(percent.detected, res$percent.detected[jj])
+    }
+    if(length(jj)>1) {
+      print(n); 
+      print(res[jj,c(1:2,4)]);
+      print('......');
+      
+      index = c(index,jj[1])
+      
+      id = c(id, paste(res[jj,1], sep='', collapse=','))
+      names = c(names, paste(res[jj,2], sep='', collapse=','))
+      species = c(species, paste(res[jj,4],sep='', collapse=','))
+      percent.detected = c(percent.detected, paste(res$percent.detected[jj], sep='', collapse=','))
+    }
+  }
+  xx = data.frame(id, names, species, res[index,-c(1:4)])
+  colnames(xx)[c(1:3)] = colnames(res)[c(1,2,4)]
+  xx$percent.detected = percent.detected
+  res = xx
+  
+  return(res)
+  
+}
+
 
 Plots.complexes.svd = function(kk, pdfname)
 {
@@ -1265,203 +1600,6 @@ Plots.complexes.svd = function(kk, pdfname)
 	
 }
 
-#### correlation between WT (16 time points) and KO (4 time points)
-correlation.wt.ko = function(data.wt.ko, time.wt=c(0:15)*3, time.ko=c(0,6,12,18))
-{
-	wt1 = data.wt.ko[c(1,3,5,7)]
-	wt2 = data.wt.ko[c(9,11,13,15)]
-	ko = data.wt.ko[17:20]
-	wt = c()
-	for(n in 1:4)
-	{
-		wt12 = c(wt1[n], wt2[n])
-		wt = c(wt, mean(wt12[which(!is.na(wt12))]))
-	}
-	if(all(!is.na(wt)) && all(!is.na(ko)))
-	{
-		return(cor(wt, ko))
-	}else{
-		return(NA)
-	}
-}
-chow.test = function(data.wt.ko, time.wt=c(0:15)*3, time.ko=c(0,6,12,18), period=24)
-{
-	#index =138; data.wt = as.numeric(aa[index, c(1:16)]);data.com = as.numeric(aa[index, grep('Cry.KO', colnames(nuclear))]);data.wt.ko =  c(data.wt, data.com); time.wt=c(0:15)*3; time.ko=c(0,6,12,18);period=24;
-	wt = as.numeric(data.wt.ko[1:16])
-	corr.ko = correlation.wt.ko(data.wt.ko)
-	kk = which(!is.na(wt)==TRUE)
-	wt = wt[kk]
-	time.wt = time.wt[kk]
-	ko = as.numeric(data.wt.ko[17:20])
-	jj = which(!is.na(ko)==TRUE)
-	ko = ko[jj]
-	time.ko = time.ko[jj]
-	nb.ko = length(ko)
-	if(length(wt)<4|length(ko)<3)
-	{
-		pval.wt.ko = NA
-	}else{
-        ### fitting wt.ko pool
-        wt.ko = c(wt, ko)
-        time.wt.ko = c(time.wt, time.ko)
-        c=cos(2*pi*time.wt.ko/period)
-        s=sin(2*pi*time.wt.ko/period)
-        fit = lm(wt.ko~c+s)
-        ee = sum(fit$residuals^2)
-        
-		###fitting wt
-		c1=cos(2*pi*time.wt/period)
-		s1=sin(2*pi*time.wt/period)
-		fit1 = lm(wt~c1+s1)
-		ee1 = sum(fit1$residuals^2)
-		
-		if(length(ko)>3)
-		{
-			### fitting ko
-			c2=cos(2*pi*time.ko/period)
-			s2=sin(2*pi*time.ko/period)
-			fit2 = lm(ko~c2+s2)
-			ee2 = sum(fit2$residuals^2)
-            
-			F2 = (ee-ee1-ee2)/3/((ee1+ee2)/(length(wt)+length(ko)-2*3))
-			pval.wt.ko = pf(F2, 3, (length(wt)+length(ko)-2*3), lower.tail = FALSE, log.p = FALSE)
-		}else{
-			F1 = (ee-ee1)/length(ko)/(ee1/(length(wt)-3))
-			pval.wt.ko = pf(F1, length(ko), (length(wt)-3), lower.tail = FALSE, log.p = FALSE)
-		}
-		
-	}
-	
-	#print(pval.wt.ko)
-	return(c(pval.ko=pval.wt.ko, nb.ko=nb.ko, corr.ko =corr.ko))
-}
-
-model.sel.wt.ko = function(data.wt.ko, time.wt=c(0:15)*3, time.ko=c(0,6,12,18), period=24)
-{
-    #index =138; data.wt = as.numeric(aa[index, c(1:16)]);data.com = as.numeric(aa[index, grep('Cry.KO', colnames(nuclear))]);data.wt.ko =  c(data.wt, data.com); time.wt=c(0:15)*3; time.ko=c(0,6,12,18);period=24;
-    wt = as.numeric(data.wt.ko[1:16])
-    corr.ko = correlation.wt.ko(data.wt.ko)
-    kk = which(!is.na(wt)==TRUE)
-    wt = wt[kk]
-    time.wt = time.wt[kk]
-    ko = as.numeric(data.wt.ko[17:20])
-    jj = which(!is.na(ko)==TRUE)
-    ko = ko[jj]
-    time.ko = time.ko[jj]
-    nb.ko = length(ko)
-    if(length(wt)<=8|length(ko)<=3)
-    {
-        prob.wt.ko = c(NA, NA, NA)
-    }else{
-        ### fitting wt.ko pool with rhythmic parameters
-        wt.ko = c(wt, ko)
-        time.wt.ko = c(time.wt, time.ko)
-        c=cos(2*pi*time.wt.ko/period)
-        s=sin(2*pi*time.wt.ko/period)
-        fit = lm(wt.ko~c+s)
-        rss = sum(fit$residuals^2)
-        
-        ###fitting wt with rhythmic parameter
-        c1=cos(2*pi*time.wt/period)
-        s1=sin(2*pi*time.wt/period)
-        fit1 = lm(wt~c1+s1)
-        rss1 = sum(fit1$residuals^2)
-        
-        ### fitting ko with rhythmic parameters
-        c2=cos(2*pi*time.ko/period)
-        s2=sin(2*pi*time.ko/period)
-        fit2 = lm(ko~c2+s2)
-        rss2 = sum(fit2$residuals^2)
-        
-        ### fitting ko with flat parameters
-        rss3 = sum((ko-mean(ko))^2)
-        
-        ## model 1: rhythmic with same parameters
-        n = length(wt.ko)
-        BIC1 = n*log(rss/n) + 3*log(n);
-        BIC2 = n*log((rss1+rss2)/n) + 6*log(n);
-        BIC3 = n*log((rss1+rss3)/n) + 4*log(n);
-        
-        BIC = c(BIC1, BIC2, BIC3)
-        bic = BIC-min(BIC)
-        prob.model = exp(-0.5*bic)
-        prob.model = prob.model/sum(prob.model)
-        
-        prob.wt.ko = prob.model
-    }
-    
-    #print(pval.wt.ko)
-    names(prob.wt.ko) = c('prob.M1', 'prob.M2', 'prob.M3')
-    return(c(prob.wt.ko, nb.ko=nb.ko, corr.ko =corr.ko))
-}
-
-
-model.sel.wt.ko.allModel = function(data.wt.ko, time.wt=c(0:15)*3, time.ko=c(0,6,12,18), period=24)
-{
-    #index =138; data.wt = as.numeric(aa[index, c(1:16)]);data.com = as.numeric(aa[index, grep('Cry.KO', colnames(nuclear))]);data.wt.ko =  c(data.wt, data.com); time.wt=c(0:15)*3; time.ko=c(0,6,12,18);period=24;
-    wt = as.numeric(data.wt.ko[1:16])
-    corr.ko = correlation.wt.ko(data.wt.ko)
-    kk = which(!is.na(wt)==TRUE)
-    wt = wt[kk]
-    time.wt = time.wt[kk]
-    ko = as.numeric(data.wt.ko[17:20])
-    jj = which(!is.na(ko)==TRUE)
-    ko = ko[jj]
-    time.ko = time.ko[jj]
-    nb.ko = length(ko)
-    if(length(wt)<=8|length(ko)<=3)
-    {
-        prob.wt.ko = c(NA, NA, NA, NA, NA);
-    }else{
-        ### fitting wt.ko pool with same rhythmic parameters
-        wt.ko = c(wt, ko)
-        time.wt.ko = c(time.wt, time.ko)
-        c=cos(2*pi*time.wt.ko/period)
-        s=sin(2*pi*time.wt.ko/period)
-        fit = lm(wt.ko~c+s)
-        rss = sum(fit$residuals^2)
-        
-        ###fitting wt and ko with same flat parameter
-        rss5 = sum((wt.ko-mean(wt.ko))^2)
-        
-        ###fitting wt with rhythmic parameter
-        c1=cos(2*pi*time.wt/period)
-        s1=sin(2*pi*time.wt/period)
-        fit1 = lm(wt~c1+s1)
-        rss1 = sum(fit1$residuals^2)
-        
-        ### fitting ko with rhythmic parameters
-        c2=cos(2*pi*time.ko/period)
-        s2=sin(2*pi*time.ko/period)
-        fit2 = lm(ko~c2+s2)
-        rss2 = sum(fit2$residuals^2)
-        
-        ### fitting ko with flat parameters
-        rss3 = sum((ko-mean(ko))^2)
-        
-        ###fitting wt and ko with same flat parameter
-        rss4 = sum((wt-mean(wt))^2)
-
-        ## model 1: rhythmic with same parameters
-        n = length(wt.ko)
-        BIC1 = n*log(rss/n) + 3*log(n);
-        BIC2 = n*log((rss1+rss2)/n) + 6*log(n);
-        BIC3 = n*log((rss1+rss3)/n) + 4*log(n);
-        BIC4 = n*log((rss4+rss2)/n) + 4*log(n);
-        BIC5 = n*log(rss5/n) + 1*log(n);
-        
-        BIC = c(BIC1, BIC2, BIC3, BIC4, BIC5)
-        bic = BIC-min(BIC)
-        prob.model = exp(-0.5*bic)
-        prob.model = prob.model/sum(prob.model)
-        
-        prob.wt.ko = prob.model
-    }
-    
-    #print(pval.wt.ko)
-    names(prob.wt.ko) = c('prob.M1', 'prob.M2', 'prob.M3', 'prob.M4', 'prob.M5')
-    return(c(prob.wt.ko, nb.ko=nb.ko, corr.ko =corr.ko))
-}
 
 
 simulation.phospho.nuclear = function(time, s0, epsilon.s0, phase.s0, s1, epsilon.s1, phase.s1, gamma0, epsilon.gamma0, phase.gamma0, gamma1, epsilon.gamma1, phase.gamma1,
@@ -1689,57 +1827,4 @@ outlier.test.ZT21 = function(x, t=c(0:15)*3, period=24)
   #R2=0
   #if(sig2>0) R2 =1.0-sum(fit$residuals^2)/(n-1)/sig2
 }
-
-model.sel.allModel = function(data1, t1=c(0:15)*3, data2, t2=c(0:15)*3, period=24)
-{
-  # period = 24; data1 = nuclear[3, c(1:16)]; data2 = nuclear[4, c(1:16)]; t1 = c(0:15)*3; t2 = t1;
-  data1 = as.numeric(data1)
-  data2 = as.numeric(data2)
-  d1 = (data1 - mean(data1, na.rm = TRUE))/sd(data1, na.rm = TRUE);
-  d2 = (data2 - mean(data2, na.rm = TRUE))/sd(data2, na.rm = TRUE);
-  d1 = d1[which(!is.na(d1)==TRUE)];t1 = t1[which(!is.na(d1)==TRUE)];
-  d2 = d2[which(!is.na(d2)==TRUE)];t2 = t2[which(!is.na(d2)==TRUE)];
-  
-  ### M1: fitting the pool of d1 and d2 with same rhythmic parameters
-  d = c(d1, d2)
-  t = c(t1, t2)
-  c=cos(2*pi*t/period)
-  s=sin(2*pi*t/period)
-  fit = lm(d~c+s)
-  rss = sum(fit$residuals^2)
-  
-  ### M2: fitting d1 and d2 with different rhythmic parameters
-  c1=cos(2*pi*t1/period)
-  s1=sin(2*pi*t1/period)
-  fit1 = lm(d1~c1+s1)
-  rss1 = sum(fit1$residuals^2)
-  
-  c2=cos(2*pi*t2/period)
-  s2=sin(2*pi*t2/period)
-  fit2 = lm(d2~c2+s2)
-  rss2 = sum(fit2$residuals^2)
-  
-  ## model 1: rhythmic with same parameters
-  n = length(d);
-  BIC1 = n*log(rss/n) + 2*log(n);
-  BIC2 = n*log((rss1+rss2)/n) + 4*log(n);
-  #BIC1 = n*log(rss/n) + 2*2;
-  #BIC2 = n*log((rss1+rss2)/n) + 4*2;
-  
-  BIC = c(BIC1, BIC2)
-  bic = BIC-min(BIC)
-  prob.model = exp(-0.5*bic)
-  prob.model = prob.model/sum(prob.model)
-  #prob.model = c(prob.model, which(prob.model==max(prob.model)))
-  #print(pval.wt.ko)
-  names(prob.model) = c('prob.BIC.M1', 'prob.BIC.M2')
-  
-  #plot(t1, d1, type='b', col='blue', ylim=range(c(d1, d2)))
-  #points(t2, d2, type='b', col='black')
-  
-  return(prob.model)
-  
-}
-
-
 
