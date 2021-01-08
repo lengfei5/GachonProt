@@ -796,11 +796,12 @@ for(n in 1:nrow(aa))
 
 dev.off()
 
-############################
-############################
-#######  protein complexes
-############################
-############################
+########################################################
+########################################################
+# Section : Protein complexes analysis
+# 
+########################################################
+########################################################
 Analysis.protein.complexes = FALSE
 if(Analysis.protein.complexes)
 {
@@ -963,7 +964,7 @@ if(Analysis.protein.complexes)
   SVD.Analysis.protein.complexes = FALSE
   if(SVD.Analysis.protein.complexes)
   {
-    load( file='Rdata/Annotation_Corum_all_with_Manual_detected_microsomal.Rdata')
+    load(file='Rdata/Annotation_Corum_all_with_Manual_detected_microsomal.Rdata')
     source('/Users/jiwang/Proteomics_anaylysis/Nuclear_proteins/f24_modified_1.0.r')
     #source('/Users/jiwang/Proteomics_anaylysis/Nuclear_proteins/functions_nuclear.R')
     annot = annot.corum

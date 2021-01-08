@@ -91,6 +91,9 @@ stadardization.nona = function(x)
   return(xx)
 }
 
+##########################################
+# protein complex rhythmicity analysis 
+##########################################
 statistics.complexes.svd = function(annot, res, pdfname='myplots/SVD_PC_plot.pdf')
 {	
   pdfname = pdfname;
@@ -171,6 +174,7 @@ statistics.complexes.svd = function(annot, res, pdfname='myplots/SVD_PC_plot.pdf
       abline(h=0, col='gray',lwd=2.0)
     }
   }
+  
   dev.off()
   
   return(res)
