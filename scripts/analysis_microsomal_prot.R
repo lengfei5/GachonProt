@@ -948,7 +948,6 @@ if(Analysis.protein.complexes)
     write.csv(res, file = paste0(tabDir, 'microsomalProt_protComplex_SVDanalysis_v2.csv'), 
               row.names = FALSE)
     
-    
   }
   
 }
