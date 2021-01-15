@@ -901,6 +901,7 @@ if(Analysis.protein.complexes)
     load(file= paste0(RdataDir, 'Annotation_Corum_all_with_Manual_detected_microsomal_SVD.Rdata'))
     res = reduce.redundancy.protein.complex(res)
     
+    
     ### calculate svd statistics using precomputed background
     load(file='/Users/jiwang/Proteomics_anaylysis/Nuclear_proteins/Rdata/Background_PC_SVD_v3.Rdata')
     nb.samples = 1000
