@@ -935,11 +935,11 @@ Plots.complexes.v3 = function(annot, nn, pdfname)
 	
 }
 
-Plots.complexes.subunits = function(annot, nn, pdfname)
+Plots.complexes.subunits = function(annot, nn, prot.data, pdfname)
 {
   #table.sx = read.table(file='Tables_DATA/Table_Nuclear_Prot_v2.txt', sep='\t', header=TRUE, as.is = c(2,3,10:19))
-  load(file='Rdata/Table_microsomal_log2_L_H_names_mRNA_total_nuclear.Rdata')
-  nuclear = microsomal;
+  #load(file='Rdata/Table_microsomal_log2_L_H_names_mRNA_total_nuclear.Rdata')
+  nuclear = prot.data
   
   pdf(pdfname, width = 14, height = 12)
   
@@ -948,6 +948,7 @@ Plots.complexes.subunits = function(annot, nn, pdfname)
   
   for(n in nn)
   {
+    cat(n, '\n')
     index = annot$index.detected[n]
     index = as.numeric(unlist(strsplit(as.character(index), ',')))
     genes = unlist(strsplit(as.character(annot$subunits.detected[n]), ','))
@@ -963,9 +964,9 @@ Plots.complexes.subunits = function(annot, nn, pdfname)
       test = as.matrix(nuclear[index,c(1:16)])
       test =apply(test, 1, standadize.nona)
       test = t(test)
-      pvals = signif(nuclear$pval[index],d=2)
-      phases = signif(nuclear$phase[index],d=2)
-      amps = signif(nuclear$amp[index],d=2)
+      pvals = signif(nuclear$pval.WT.24hRhythmicity[index],d=2)
+      phases = signif(nuclear$phase.WT.24hRhythmicity[index],d=2)
+      amps = signif(nuclear$amp.WT.24hRhythmicity[index],d=2)
       
       o1 = order(pvals)
       pvals = pvals[o1]
@@ -975,11 +976,15 @@ Plots.complexes.subunits = function(annot, nn, pdfname)
       index = index[o1]
       genes = genes[o1]
       ylim = range(test, na.rm=TRUE)
+      
       plot(1,1,type = 'n', xlab = 'ZT[h]', ylab = 'standadized abundance', xlim = xlim, ylim = ylim,
-           main=paste(annot[n,2],',\n', 'Coverage=', 
-                      signif(as.numeric(annot$percent.detected[n]),d=2)*100, '%', ', pval.svd = ', 
-                      signif(as.numeric(annot$pval.svd[n]), d=2), ', qv.rhythmic = ', 
-                      signif(as.numeric(annot$qv.p1[n]), d=2), sep=''))
+           main=paste(annot[n,2],',\n', 
+                      #'Coverage=',  annot$percent.detected[n], 
+                      'pval.svd = ', 
+                      signif(as.numeric(annot$pval.svd[n]), d=2), 
+                      ', pval.rhythmic = ', 
+                      signif(as.numeric(annot$pval.p1[n]), d=2), sep='')
+           )
       abline(h=0, col='gray',lwd=4.0)
       
       for(i in 1:nrow(test))
@@ -995,6 +1000,7 @@ Plots.complexes.subunits = function(annot, nn, pdfname)
                legend = paste(genes[i],', pval= ', pvals[i], ', amp= ', amps[i],sep=''),
                text.col=text.col, col =  rainbow[(i.rel-1)%%nrow(test)+1], lty = (i.rel-1)%/%nrow(test)+1, bty = 'n' )
       }
+      
     }
   }
   dev.off()

@@ -784,10 +784,12 @@ if(Analysis.protein.complexes)
 {
   source('proteomics_functions.R')
   source('microsomal_functions.R')
+  microsomal = readRDS(file = paste0(RdataDir, 'microsomalProt_processed.log2_localizationAnnot_rhythmicity.rds'))
+  microsomal$nb.timepoints = microsomal$nb.timepoints.WT.24hRhythmicity
   
   # prepare the detected genes in microsomal
-  microsomal = mcm
-  microsomal$nb.timepoints = microsomal$nb.timepoints.WT.24hRhythmicity
+  #microsomal = mcm
+  
   microsomal.names = c()
   for(n in 1:nrow(microsomal))
   {
@@ -901,15 +903,15 @@ if(Analysis.protein.complexes)
     load(file= paste0(RdataDir, 'Annotation_Corum_all_with_Manual_detected_microsomal_SVD.Rdata'))
     res = reduce.redundancy.protein.complex(res)
     
-    
     ### calculate svd statistics using precomputed background
-    load(file='/Users/jiwang/Proteomics_anaylysis/Nuclear_proteins/Rdata/Background_PC_SVD_v3.Rdata')
+    load(file='../archives/Rdata_nuclearProt_epfl/Background_PC_SVD_v3.Rdata') 
     nb.samples = 1000
     bg0 = rep(NA, nrow(res))
     bg1 = rep(NA, nrow(res))
     bg2 = rep(NA, nrow(res))
     pval.svd = rep(NA, nrow(res))
     bg.cutoff = rep(NA, nrow(res))
+    
     for(n in 1:nrow(res))
     {
       kk = which(bg.samples==res$nb.subunits.quantified[n])
@@ -918,7 +920,7 @@ if(Analysis.protein.complexes)
       bg0[n] = mean(test)
       bg1[n] = mean(test) + sd(test)
       bg2[n] = mean(test) + 2.33*sd(test)
-      pval.svd[n] = length(which(test>=res$p1[n]))/nb.samples
+      pval.svd[n] = length(which(test>=res$svd.1st.component.p1[n]))/nb.samples
       
       ttest = test[order(-test)]
       bg.cutoff[n] = ttest[50]
@@ -930,25 +932,17 @@ if(Analysis.protein.complexes)
     res$bg2 = bg2
     res$pval.svd = pval.svd
     res$bg.cutoff = bg.cutoff
-    res$qv.p1 = qvals(res$pval.p1)
+    res$qv.svd = qvals(res$pval.p1)
     
     length(which(res$pval.svd<0.05))
-    length(which(res$pval.svd<0.05 & res$qv.p1<0.15))
+    length(which(res$pval.svd<0.05 & res$qv.svd < 0.15))
     
-    #length(which(res$p1<res$pval.svd))
-    #length(which(res$pval.svd<0.05))
-    #length(which(res$pval.svd<0.05 & res$qv.p1<0.05))
-    kk = which(res$pval.svd<0.05)
-    
-    aa = res[kk, ] 
-    o1 = order(aa$pval.svd)
-    aa = aa[o1, ]
-    
-    source('function_microsomal.R')
-    
+    source('proteomics_functions.R')
+    kk = which(res$pval.svd < 0.05 & res$pval.p1 < 0.05)
+    #source('function_microsomal.R')
     #source('/Users/jiwang/Proteomics_anaylysis/Nuclear_proteins/functions_nuclear.R')
-    #Plots.complexes.details(aa, c(1:nrow(aa)), 'Plots/All_PCs_Corum_subunits_Selected_SVD_pval_0.05_details.pdf')
-    Plots.complexes.subunits(aa, c(1:nrow(aa)), 'Plots/All_PCs_Corum_subunits_Selected_SVD_pval_0.05.pdf')
+    Plots.complexes.subunits(annot = res, nn = kk, prot.data = microsomal, 
+                             pdfname = paste0(resDir, '/PCs_Corum_subunits_Selected_SVD_pval_0.05.pdf'))
     
   }
   
