@@ -938,11 +938,16 @@ if(Analysis.protein.complexes)
     length(which(res$pval.svd<0.05 & res$qv.svd < 0.15))
     
     source('proteomics_functions.R')
-    kk = which(res$pval.svd < 0.05 & res$pval.p1 < 0.05)
+    #kk = which(res$pval.svd < 0.05 & res$pval.p1 < 0.05)
+    kk = c(1:nrow(res))
     #source('function_microsomal.R')
     #source('/Users/jiwang/Proteomics_anaylysis/Nuclear_proteins/functions_nuclear.R')
     Plots.complexes.subunits(annot = res, nn = kk, prot.data = microsomal, 
                              pdfname = paste0(resDir, '/PCs_Corum_subunits_Selected_SVD_pval_0.05.pdf'))
+    
+    write.csv(res, file = paste0(tabDir, 'microsomalProt_protComplex_SVDanalysis_v2.csv'), 
+              row.names = FALSE)
+    
     
   }
   
