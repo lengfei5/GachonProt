@@ -799,6 +799,7 @@ if(Analysis.protein.complexes)
       for(g.test in gg) microsomal.names = rbind(microsomal.names, c(n, as.character(microsomal$Gene.names[n]), g.test));
     }
   }
+  
   microsomal.names = data.frame(microsomal.names, stringsAsFactors = FALSE);
   colnames(microsomal.names) = c('index', 'Gene.names', 'gene');
   
@@ -820,6 +821,7 @@ if(Analysis.protein.complexes)
     microsomal.names = data.frame(as.integer(microsomal.names[,1]), microsomal.names[, c(2,3)], stringsAsFactors = FALSE)
     
     options(warn=1)
+    
     detected = c()
     index = c()
     nb.detected = c()
