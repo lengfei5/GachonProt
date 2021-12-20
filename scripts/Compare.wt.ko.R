@@ -82,6 +82,7 @@ load(file='Tables_DATA/Table_Nuclear_total_mRNA_pol2.Rdata')
 table.sx = read.table(file='Tables_DATA/Table_Nuclear_Prot_v3.txt', sep='\t', header=TRUE, as.is = c(2,3,10:19))
 source('functions_nuclear.R')
 #kk = which(table.sx$Gene.names=='Sirt7')
+
 res.ko = c()
 for(n in 1:nrow(table.sx))
 {
