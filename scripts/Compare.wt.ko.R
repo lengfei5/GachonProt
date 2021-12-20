@@ -11,19 +11,54 @@
 ##########################################
 # the main function used for model comparison 
 ##########################################
-model.sel.wt.ko = function(data.wt.ko, time.wt=c(0:15)*3, time.ko=c(0,6,12,18), period=24)
+correlation.wt.ko = function(wt, ko, time.wt=c(0:15)*3, time.ko=c(0,6,12,18), period = 24)
+{
+  cat('calculate the correcitons between wt and ko for shared time points \n')
+  
+  # search for overlapping time points between wt and ko, if found, average of replicates were calculated
+  wt.mean = c()
+  tt.wt = time.wt%%period
+  for(t in time.ko)
+  {
+    wt.mean = c(wt.mean, mean(wt[which(tt.wt == t)]))  
+  }
+  
+  # wt1 = data.wt.ko[c(1,3,5,7)]
+  # wt2 = data.wt.ko[c(9,11,13,15)]
+  # ko = data.wt.ko[17:20]
+  # wt = c()
+  # for(n in 1:4)
+  # {
+  #   wt12 = c(wt1[n], wt2[n])
+  #   wt = c(wt, mean(wt12[which(!is.na(wt12))]))
+  # }
+  # 
+  
+  if(all(!is.na(wt.mean)) && all(!is.na(ko)))
+  {
+    cat('correlation is cacluated only if all wt and ko at shared time points are not NA \n')
+    return(cor(wt.mean, ko))
+  }else{
+    return(NA)
+  }
+}
+
+model.sel.wt.ko = function(data_wt, data_ko, time.wt=c(0:15)*3, time.ko=c(0,6,12,18), period=24)
 {
   #index =138; data.wt = as.numeric(aa[index, c(1:16)]);data.com = as.numeric(aa[index, grep('Cry.KO', colnames(nuclear))]);data.wt.ko =  c(data.wt, data.com); time.wt=c(0:15)*3; time.ko=c(0,6,12,18);period=24;
-  wt = as.numeric(data.wt.ko[1:16])
-  corr.ko = correlation.wt.ko(data.wt.ko)
+  wt = as.numeric(data_wt)
+  ko = as.numeric(data_ko)
+  corr.ko = correlation.wt.ko(wt, ko, time.wt, time.ko)
+  
   kk = which(!is.na(wt)==TRUE)
   wt = wt[kk]
   time.wt = time.wt[kk]
-  ko = as.numeric(data.wt.ko[17:20])
+  
   jj = which(!is.na(ko)==TRUE)
   ko = ko[jj]
   time.ko = time.ko[jj]
   nb.ko = length(ko)
+  
   if(length(wt)<=8|length(ko)<=3)
   {
     prob.wt.ko = c(NA, NA, NA)
@@ -70,33 +105,27 @@ model.sel.wt.ko = function(data.wt.ko, time.wt=c(0:15)*3, time.ko=c(0,6,12,18), 
   return(c(prob.wt.ko, nb.ko=nb.ko, corr.ko =corr.ko))
 }
 
-
 ##########################################
 # example how to use the main function 
 ##########################################
-nuclear = read.table('/Users/jiwang/Proteomics_anaylysis/Nuclear_proteins/Tables_DATA/nuclear_proteins_L_H_log2_all_WT_KO_24h_12h_statistics.txt', sep='\t', header=TRUE, as.is=c(17:20))
-nuclear.names = read.table('/Users/jiwang/Proteomics_anaylysis/Nuclear_proteins/Transcription_network/Annotations_TFs/Gene_names_Mapping_Nuclear_proteins.txt',header=TRUE, sep='\t')
-#load(file='/Users/jiwang/Proteomics_anaylysis/Nuclear_proteins/Tables_DATA/Table_Nuclear_mRNA_Total_Nascent.Rdata')
-source('/Users/jiwang/Proteomics_anaylysis/Nuclear_proteins/f24_modified_1.0.r')
-load(file='Tables_DATA/Table_Nuclear_total_mRNA_pol2.Rdata')
-table.sx = read.table(file='Tables_DATA/Table_Nuclear_Prot_v3.txt', sep='\t', header=TRUE, as.is = c(2,3,10:19))
-source('functions_nuclear.R')
-#kk = which(table.sx$Gene.names=='Sirt7')
+dataDir = '../data/nuclearProt/Tables_DATA/' # specific the folder of example table
 
-res.ko = c()
-for(n in 1:nrow(table.sx))
+nuclear = read.table(paste0(dataDir, 'nuclear_proteins_L_H_log2_all_WT_KO_24h_12h_statistics.txt'), 
+                     sep='\t', header=TRUE, as.is=c(17:20))
+
+res = c()
+for(n in 1:nrow(nuclear))
 {
-  index = table.sx[n, 1]
-  data.wt = as.numeric(nuclear[index, c(1:16)]);
-  res.ko = rbind(res.ko, model.sel.wt.ko(c(data.wt, as.numeric(nuclear[index, grep('Cry.KO', colnames(nuclear))]))))
-  #cor.wtko = c(cor.wtko, correlation.wt.ko(data.wt, data.com))
-  #diff.mean = c(diff.mean, (mean(data.com[which(!is.na(data.com)==TRUE)])-mean(data.wt[which(!is.na(data.wt)==TRUE)])))
-  #correlation = c(correlation, correlation.wt.ko(c(data.wt, data.com)))
+  # n = 1
+  data.wt = nuclear[n, c(1:16)]
+  data.ko = nuclear[n, grep('Cry.KO', colnames(nuclear))]
+  
+  res = rbind(res, model.sel.wt.ko(data_wt = data.wt, # wt data
+                                   data_ko = data.ko, # ko data
+                                   time.wt=c(0:15)*3, # time point of wt
+                                   time.ko=c(0,6,12,18), # ko time points
+                                   period=24) # period, 24h normally
+              ) 
+  
 }
-
-table.sx$prob.rhythmic.same.parameters.wt.ko = res.ko[,1]
-
-
-
-
 
